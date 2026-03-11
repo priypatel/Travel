@@ -1,57 +1,43 @@
 # System Design
 
-## Overview
+## Layers
 
-The system uses a layered architecture based on the MERN stack with AI services.
+Presentation Layer
+React UI components
 
----
+Application Layer
+Express REST APIs
 
-## Components
-
-Client Layer
-React frontend
-
-API Layer
-Node.js Express server
-
-Database Layer
-MongoDB
+Data Layer
+MongoDB database
 
 AI Layer
-Gemini AI service
+Gemini AI recommendation engine
+
+Map Layer
+Mapbox route visualization
 
 ---
 
 ## Request Flow
 
-User Request
-
+User
+ |
 React Frontend
-
-Node API
-
-AI Service or MongoDB
-
-Response returned to client
+ |
+Express API
+ |
+MongoDB / AI Service
+ |
+Response to UI
 
 ---
 
 ## Scalability
 
-Future improvements:
+Future enhancements
 
 Redis caching
-
-Load-balanced backend
-
 CDN for images
-
----
-
-## Security
-
-JWT authentication
-
-Input validation
-
 API rate limiting
+Load balanced backend

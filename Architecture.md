@@ -1,125 +1,52 @@
-Project Overview
+# Architecture
 
-The project is an AI-assisted travel recommendation web application built using the MERN stack.
-Users can explore destinations, generate AI-based travel itineraries, and visualize travel routes on an interactive map.
+## High Level Architecture
 
-The system combines:
-
-traditional backend APIs
-
-AI recommendation services
-
-geographic visualization
-
-to create a modern travel planning experience.
-
-High Level Architecture
-Client (React + Map UI)
+Client (React)
         |
         v
-Node.js / Express API Layer
+Node.js Express API
         |
-        +-----------------------+
-        |                       |
-        v                       v
-MongoDB Database          AI Recommendation Service
-        |                       |
-        v                       v
-Destination Data         Gemini / LLM API
-Core Components
-Frontend (React)
+        +------------------------+
+        |                        |
+        v                        v
+MongoDB Database           AI Recommendation API
+        |
+        v
+Mapbox Route Service
 
-Responsibilities:
+---
 
-user interface
+## Components
 
-destination browsing
-
-itinerary visualization
-
-map route rendering
-
-user authentication
-
-Key libraries:
-
+Frontend
 React
-
 TailwindCSS
-
 Mapbox GL JS
 
-Backend (Node.js + Express)
+Backend
+Node.js
+Express
 
-Responsibilities:
+Database
+MongoDB Atlas
 
-REST APIs
+AI Engine
+Gemini API
 
-user authentication
+Authentication
+JWT
 
-AI itinerary generation
+---
 
-destination management
+## Data Flow
 
-caching logic
-
-Key modules:
-
-controllers/
-routes/
-models/
-services/
-middleware/
-Database (MongoDB)
-
-Stores:
-
-users
-
-travel destinations
-
-reviews
-
-AI generated itineraries
-
-cached queries
-
-Example structure:
-
-users
-destinations
-reviews
-itineraries
-AI Recommendation Service
-
-Uses an LLM to generate travel recommendations based on:
-
-budget
-
-trip duration
-
-user interests
-
-destination preferences
-
-Example prompt:
-
-Suggest a 3 day travel itinerary in Goa
-Budget: ₹15000
-Interest: beaches
-Return JSON.
-Map Visualization
-
-Uses Mapbox to display:
-
-destination markers
-
-travel routes
-
-itinerary locations
-
-Deployment Architecture
-Frontend → Vercel
-Backend → Render / Railway
-Database → MongoDB Atlas
-AI API → Gemini Free Tier
+User searches destination
+       |
+Frontend request
+       |
+Backend API
+       |
+MongoDB query or AI service
+       |
+Response returned to client

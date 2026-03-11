@@ -1,85 +1,69 @@
 # API Design Specification
 
 Base URL
-
-http://localhost:5000/api
+/api
 
 ---
 
-## Authentication
+Auth APIs
 
 POST /auth/register
-
-Request
-
-{
- "name": "User",
- "email": "user@example.com",
- "password": "password"
-}
-
-Response
-
-{
- "success": true,
- "token": "jwt_token"
-}
-
----
-
 POST /auth/login
 
-Request
-
-{
- "email": "user@example.com",
- "password": "password"
-}
-
-Response
-
-{
- "token": "jwt_token"
-}
-
 ---
 
-## Destinations
+Destination APIs
 
 GET /destinations
-
 GET /destinations/:id
-
-POST /destinations
-
-Example Response
-
-{
- "name": "Baga Beach",
- "city": "Goa",
- "rating": 4.6,
- "lat": 15.5553,
- "lng": 73.7517
-}
 
 ---
 
-## AI Itinerary
+Places APIs
 
-POST /ai/itinerary
+GET /destinations/:id/places
+
+---
+
+Restaurant APIs
+
+GET /destinations/:id/restaurants
+
+---
+
+Property APIs
+
+GET /destinations/:id/stays
+
+---
+
+Wishlist APIs
+
+POST /wishlist/add
+GET /wishlist
+DELETE /wishlist/:id
+
+Authentication required
+
+---
+
+AI Recommendation
+
+POST /ai/recommend
 
 Request
 
 {
- "city": "Goa",
- "days": 3,
- "budget": 15000,
- "interest": ["beach"]
+ location
+ budget
+ days
+ travelStyle
+ interests
 }
 
 Response
 
 {
- "day1": ["Baga Beach","Fort Aguada"],
- "day2": ["Anjuna Beach","Chapora Fort"]
+ recommendedDestination
+ reason
 }
