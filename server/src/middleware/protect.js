@@ -4,7 +4,7 @@ import AppError from '../utils/AppError.js';
 import asyncHandler from './asyncHandler.js';
 
 const protect = asyncHandler(async (req, res, next) => {
-  const token = req.cookies?.token;
+  const token = req.cookies?.accessToken;
   if (!token) throw new AppError('Not authenticated. Please log in.', 401);
 
   const decoded = jwt.verify(token, process.env.JWT_SECRET);
