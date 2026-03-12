@@ -9,15 +9,15 @@ import FormField from '../components/FormField';
 export default function RegisterPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { loading, error, token } = useSelector((state) => state.auth);
+  const { loading, error, user } = useSelector((state) => state.auth);
 
   useEffect(() => {
     dispatch(clearError());
   }, [dispatch]);
 
   useEffect(() => {
-    if (token) navigate('/');
-  }, [token, navigate]);
+    if (user) navigate('/');
+  }, [user, navigate]);
 
   const formik = useFormik({
     initialValues: { name: '', email: '', password: '', confirm: '' },
