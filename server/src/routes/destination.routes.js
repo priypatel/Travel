@@ -11,8 +11,8 @@ import { destinationQuerySchema } from '../validators/destination.validator.js';
 
 const router = Router();
 
-// router.get('/', validate(destinationQuerySchema, 'query'), getDestinations);
-router.get('/', getDestinations);
+router.get('/', validate(destinationQuerySchema, 'query'), getDestinations);
+// router.get('/', getDestinations);
 router.get('/:id', getDestinationById);
 router.get('/:id/places', getDestinationPlaces);
 router.get('/:id/restaurants', getDestinationRestaurants);

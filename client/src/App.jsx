@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { getMe } from './store/slices/authSlice';
 import Navbar from './components/Navbar';
+import ScrollToTop from './components/ScrollToTop';
 import HomePage from './pages/HomePage';
 import DestinationDetailPage from './pages/DestinationDetailPage';
 import LoginPage from './pages/LoginPage';
@@ -27,6 +28,7 @@ function App() {
 
   return (
     <>
+      <ScrollToTop />
       <Navbar />
       <main className="pt-[72px]">
         <Routes>
