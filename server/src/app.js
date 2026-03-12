@@ -3,6 +3,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import authRoutes from './routes/auth.routes.js';
 import destinationRoutes from './routes/destination.routes.js';
+import aiRoutes from './routes/ai.routes.js';
 import errorHandler from './middleware/errorHandler.js';
 
 const app = express();
@@ -18,6 +19,7 @@ app.use(cookieParser());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/destinations', destinationRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

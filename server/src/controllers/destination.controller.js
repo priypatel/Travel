@@ -65,6 +65,20 @@ export const getDestinations = asyncHandler(async (req, res) => {
   });
 });
 
+// GET /api/destinations/search?name=Santorini
+export const searchDestinationByName = asyncHandler(async (req, res) => {
+  const { name } = req.query;
+  if (!name) {
+    return res.status(200).json({ status: 'success', data: null });
+  }
+
+  const destination = await Destination.findOne({
+    name: { $regex: name.trim(), $options: 'i' },
+  }).select('_id name country heroImage');
+
+  res.status(200).json({ status: 'success', data: destination || null });
+});
+
 // GET /api/destinations/:id
 export const getDestinationById = asyncHandler(async (req, res) => {
   const destination = await Destination.findById(req.params.id).select('-__v');

@@ -1,27 +1,32 @@
 import { useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { getDestinationDetail, clearDetail } from '../store/slices/destinationSlice';
+import { getAIDestinationDetails, clearAIDetail } from '../store/slices/aiSlice';
 
-// ─── Sub-cards ────────────────────────────────────────────────────────────────
+// Category → color mapping for place cards
+const CATEGORY_COLORS = {
+  Nature:        { bg: 'bg-emerald-50', text: 'text-emerald-600', icon: '🌿' },
+  History:       { bg: 'bg-amber-50',   text: 'text-amber-600',   icon: '🏛' },
+  Culture:       { bg: 'bg-purple-50',  text: 'text-purple-600',  icon: '🎭' },
+  Adventure:     { bg: 'bg-orange-50',  text: 'text-orange-600',  icon: '⛰' },
+  Entertainment: { bg: 'bg-pink-50',    text: 'text-pink-600',    icon: '🎪' },
+};
 
 function PlaceCard({ place }) {
+  const colors = CATEGORY_COLORS[place.category] || { bg: 'bg-indigo-50', text: 'text-indigo-600', icon: '📍' };
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-      <img
-        src={place.image}
-        alt={place.name}
-        className="w-full h-40 object-cover"
-        loading="lazy"
-      />
+      <div className={`w-full h-32 ${colors.bg} flex items-center justify-center text-4xl`}>
+        {colors.icon}
+      </div>
       <div className="p-3">
-        <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+        <span className={`text-xs font-medium ${colors.text} ${colors.bg} px-2 py-0.5 rounded-full`}>
           {place.category}
         </span>
         <h4 className="text-sm font-bold text-[#0F172A] mt-2 mb-1">{place.name}</h4>
-        <p className="text-xs text-gray-500 line-clamp-2">{place.description}</p>
+        <p className="text-xs text-gray-500 line-clamp-3">{place.description}</p>
       </div>
     </div>
   );
@@ -31,11 +36,8 @@ function RestaurantCard({ restaurant }) {
   const stars = Math.round(restaurant.rating);
   return (
     <div className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow flex gap-3">
-      <div className="w-10 h-10 rounded-lg bg-cyan-50 flex items-center justify-center shrink-0">
-        <svg className="w-5 h-5 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-        </svg>
+      <div className="w-10 h-10 rounded-lg bg-cyan-50 flex items-center justify-center shrink-0 text-lg">
+        🍽
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-1">
@@ -45,12 +47,8 @@ function RestaurantCard({ restaurant }) {
         <p className="text-xs text-gray-500 mb-1">{restaurant.cuisine}</p>
         <div className="flex items-center gap-0.5">
           {Array.from({ length: 5 }).map((_, i) => (
-            <svg
-              key={i}
-              className={`w-3 h-3 ${i < stars ? 'text-amber-400' : 'text-gray-200'}`}
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
+            <svg key={i} className={`w-3 h-3 ${i < stars ? 'text-amber-400' : 'text-gray-200'}`}
+              fill="currentColor" viewBox="0 0 20 20">
               <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
             </svg>
           ))}
@@ -65,26 +63,19 @@ function StayCard({ stay }) {
   const stars = Math.round(stay.rating);
   return (
     <div className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow flex gap-3">
-      <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-        <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-        </svg>
+      <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0 text-lg">
+        🏨
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-1">
           <h4 className="text-sm font-bold text-[#0F172A] leading-tight">{stay.name}</h4>
           <span className="text-xs text-gray-400 shrink-0">{stay.priceRange}</span>
         </div>
-        <p className="text-xs text-gray-500 mb-1">{stay.location}</p>
+        <p className="text-xs text-gray-500 mb-1">{stay.type}</p>
         <div className="flex items-center gap-0.5">
           {Array.from({ length: 5 }).map((_, i) => (
-            <svg
-              key={i}
-              className={`w-3 h-3 ${i < stars ? 'text-amber-400' : 'text-gray-200'}`}
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
+            <svg key={i} className={`w-3 h-3 ${i < stars ? 'text-amber-400' : 'text-gray-200'}`}
+              fill="currentColor" viewBox="0 0 20 20">
               <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
             </svg>
           ))}
@@ -95,7 +86,6 @@ function StayCard({ stay }) {
   );
 }
 
-// ─── Section wrapper ──────────────────────────────────────────────────────────
 function Section({ title, icon, children }) {
   return (
     <div className="mb-12">
@@ -108,7 +98,6 @@ function Section({ title, icon, children }) {
   );
 }
 
-// ─── Mapbox map ───────────────────────────────────────────────────────────────
 function DestinationMap({ lat, lng, name }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
@@ -122,7 +111,6 @@ function DestinationMap({ lat, lng, name }) {
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(mapRef.current);
 
-    // Custom brand-coloured marker using divIcon
     const markerIcon = L.divIcon({
       html: `<div style="width:16px;height:16px;background:#4F46E5;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px #4F46E5;"></div>`,
       className: '',
@@ -144,144 +132,131 @@ function DestinationMap({ lat, lng, name }) {
   return <div ref={containerRef} className="w-full h-64 rounded-2xl overflow-hidden" />;
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-export default function DestinationDetailPage() {
-  const { id } = useParams();
+export default function AIDestinationDetailPage() {
+  const [searchParams] = useSearchParams();
+  const destinationName = searchParams.get('name') || '';
   const dispatch = useDispatch();
-  const { detail, places, restaurants, stays, loading, error } = useSelector(
-    (state) => state.destinations
-  );
+  const { destinationDetail, detailLoading, detailError } = useSelector((state) => state.ai);
 
   useEffect(() => {
-    dispatch(getDestinationDetail(id));
-    return () => dispatch(clearDetail());
-  }, [dispatch, id]);
+    if (destinationName) dispatch(getAIDestinationDetails(destinationName));
+    return () => dispatch(clearAIDetail());
+  }, [dispatch, destinationName]);
 
-  // Loading skeleton
-  if (loading) {
+  if (detailLoading) {
     return (
       <div className="min-h-screen bg-[#F8FAFC]">
-        <div className="h-[60vh] bg-gray-200 animate-pulse" />
+        <div className="h-[40vh] bg-gradient-to-br from-indigo-600 to-cyan-500 animate-pulse" />
         <div className="max-w-[1200px] mx-auto px-6 py-10 space-y-4">
           <div className="h-8 bg-gray-200 rounded w-1/3 animate-pulse" />
           <div className="h-4 bg-gray-100 rounded w-2/3 animate-pulse" />
           <div className="h-4 bg-gray-100 rounded w-1/2 animate-pulse" />
         </div>
+        <div className="max-w-[1200px] mx-auto px-6 text-center text-gray-400 text-sm mt-4">
+          Generating destination details with AI — this may take a moment...
+        </div>
       </div>
     );
   }
 
-  // Error state
-  if (error || !detail) {
+  if (detailError || !destinationDetail) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-[#0F172A] mb-2">
-            {error || 'Destination not found'}
+            {detailError || 'Could not load destination details'}
           </h2>
-          <Link to="/" className="text-indigo-600 text-sm hover:underline">
-            ← Back to destinations
+          <Link to="/ai-search" className="text-indigo-600 text-sm hover:underline">
+            ← Back to AI Search
           </Link>
         </div>
       </div>
     );
   }
 
+  const { name, description, coordinates, places, restaurants, stays } = destinationDetail;
+
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      {/* ── Hero ─────────────────────────────────────────────── */}
-      <section className="relative h-[60vh] flex items-end overflow-hidden">
-        <img
-          src={detail.heroImage}
-          alt={detail.name}
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A]/80 via-[#0F172A]/20 to-transparent" />
-
+      {/* ── Hero (gradient, no image needed) ─────────────────────── */}
+      <section className="relative h-[40vh] flex items-end overflow-hidden bg-gradient-to-br from-[#4F46E5] via-[#7C3AED] to-[#06B6D4]">
+        <div className="absolute inset-0 bg-[#0F172A]/30" />
         <div className="relative z-10 max-w-[1200px] mx-auto px-6 pb-10 w-full">
           <Link
-            to="/"
+            to="/ai-search"
             className="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-4 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            All destinations
+            Back to AI Search
           </Link>
           <div className="flex flex-wrap items-end gap-4">
             <div>
-              <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight">{detail.name}</h1>
-              <p className="text-white/80 mt-1 text-lg">{detail.country}</p>
-            </div>
-            <div className="flex flex-wrap gap-2 mb-1">
-              <span className="bg-white/20 backdrop-blur-sm text-white text-sm px-3 py-1 rounded-full">
-                🗓 Best: {detail.bestTime}
+              <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full mb-3">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+                AI Generated
               </span>
-              {detail.tags?.map((tag) => (
-                <span key={tag} className="bg-indigo-600/80 backdrop-blur-sm text-white text-sm px-3 py-1 rounded-full">
-                  {tag}
-                </span>
-              ))}
+              <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight">{name}</h1>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Content ──────────────────────────────────────────── */}
+      {/* ── Content ──────────────────────────────────────────────── */}
       <div className="max-w-[1200px] mx-auto px-6 py-10">
         {/* Overview */}
         <div className="bg-white rounded-2xl p-6 shadow-sm mb-10">
-          <h2 className="text-lg font-bold text-[#0F172A] mb-3">About {detail.name}</h2>
-          <p className="text-gray-600 leading-relaxed">{detail.description}</p>
+          <h2 className="text-lg font-bold text-[#0F172A] mb-3">About {name}</h2>
+          <p className="text-gray-600 leading-relaxed">{description}</p>
         </div>
 
         {/* Map */}
-        {detail.coordinates?.lat && detail.coordinates?.lng && (
+        {coordinates?.lat && coordinates?.lng && (
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-10 p-2">
-            <DestinationMap
-              lat={detail.coordinates.lat}
-              lng={detail.coordinates.lng}
-              name={detail.name}
-            />
+            <DestinationMap lat={coordinates.lat} lng={coordinates.lng} name={name} />
           </div>
         )}
 
         {/* Places */}
         <Section title="Top Places to Visit" icon="🏛">
-          {places.length > 0 ? (
+          {places?.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-              {places.map((place) => (
-                <PlaceCard key={place._id} place={place} />
+              {places.map((place, i) => (
+                <PlaceCard key={i} place={place} />
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-400">No places listed yet.</p>
+            <p className="text-sm text-gray-400">No places available.</p>
           )}
         </Section>
 
         {/* Restaurants */}
         <Section title="Top Restaurants" icon="🍽">
-          {restaurants.length > 0 ? (
+          {restaurants?.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {restaurants.map((r) => (
-                <RestaurantCard key={r._id} restaurant={r} />
+              {restaurants.map((r, i) => (
+                <RestaurantCard key={i} restaurant={r} />
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-400">No restaurants listed yet.</p>
+            <p className="text-sm text-gray-400">No restaurants available.</p>
           )}
         </Section>
 
         {/* Stays */}
         <Section title="Where to Stay" icon="🏨">
-          {stays.length > 0 ? (
+          {stays?.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {stays.map((s) => (
-                <StayCard key={s._id} stay={s} />
+              {stays.map((s, i) => (
+                <StayCard key={i} stay={s} />
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-400">No stays listed yet.</p>
+            <p className="text-sm text-gray-400">No stays available.</p>
           )}
         </Section>
       </div>

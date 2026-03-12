@@ -8,6 +8,8 @@ import HomePage from './pages/HomePage';
 import DestinationDetailPage from './pages/DestinationDetailPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import AISearchPage from './pages/AISearchPage';
+import AIDestinationDetailPage from './pages/AIDestinationDetailPage';
 
 function ProtectedRoute({ children }) {
   const { user } = useSelector((state) => state.auth);
@@ -36,21 +38,15 @@ function App() {
           <Route path="/destinations/:id" element={<DestinationDetailPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          {/* Phase 3 routes — placeholders */}
-          <Route
-            path="/ai-search"
-            element={
-              <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
-                <p className="text-gray-400 font-medium">AI Search — coming in Phase 3</p>
-              </div>
-            }
-          />
+          <Route path="/ai-search" element={<AISearchPage />} />
+          <Route path="/ai-destination" element={<AIDestinationDetailPage />} />
+          {/* Phase 4 — Wishlist placeholder */}
           <Route
             path="/wishlist"
             element={
               <ProtectedRoute>
                 <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
-                  <p className="text-gray-400 font-medium">Wishlist — coming in Phase 3</p>
+                  <p className="text-gray-400 font-medium">Wishlist — coming in Phase 4</p>
                 </div>
               </ProtectedRoute>
             }
