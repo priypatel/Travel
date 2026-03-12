@@ -1,20 +1,20 @@
 import AppError from '../utils/AppError.js';
 
 /**
- * Middleware factory that validates req.body against a Yup schema.
+ * Middleware factory that validates req.body (default) or req.query against a Yup schema.
  * Returns 400 with field-level error details on validation failure.
  *
- * Usage in routes:
- *   router.post('/register', validate(registerSchema), register);
+ * Usage:
+ *   router.post('/register', validate(registerSchema), register);          // body
+ *   router.get('/', validate(querySchema, 'query'), getAll);               // query params
  */
-const validate = (schema) => async (req, res, next) => {
+const validate = (schema, source = 'body') => async (req, _res, next) => {
   try {
-    // abortEarly: false → collect ALL validation errors, not just the first
-    const validatedBody = await schema.validate(req.body, {
+    const validated = await schema.validate(req[source], {
       abortEarly: false,
       stripUnknown: true,
     });
-    req.body = validatedBody; // replace with cleaned/cast values
+    req[source] = validated;
     next();
   } catch (err) {
     if (err.name === 'ValidationError') {

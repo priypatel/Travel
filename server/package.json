@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "test": "node --experimental-vm-modules node_modules/.bin/jest --verbose --forceExit"
+    "test": "node --experimental-vm-modules node_modules/.bin/jest --verbose --forceExit",
+    "seed": "node src/seed.js"
   },
   "keywords": [],
   "author": "",
