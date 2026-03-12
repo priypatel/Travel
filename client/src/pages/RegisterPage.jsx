@@ -1,15 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
+import { useFormik } from 'formik';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import { register, clearError } from '../store/slices/authSlice';
+import { registerSchema } from '../validators/auth.validator';
+import FormField from '../components/FormField';
 
 export default function RegisterPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { loading, error, token } = useSelector((state) => state.auth);
-
-  const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' });
-  const [localError, setLocalError] = useState('');
 
   useEffect(() => {
     dispatch(clearError());
@@ -19,25 +19,13 @@ export default function RegisterPage() {
     if (token) navigate('/');
   }, [token, navigate]);
 
-  const handleChange = (e) => {
-    setLocalError('');
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (form.password !== form.confirm) {
-      setLocalError('Passwords do not match');
-      return;
-    }
-    if (form.password.length < 6) {
-      setLocalError('Password must be at least 6 characters');
-      return;
-    }
-    dispatch(register({ name: form.name, email: form.email, password: form.password }));
-  };
-
-  const displayError = localError || error;
+  const formik = useFormik({
+    initialValues: { name: '', email: '', password: '', confirm: '' },
+    validationSchema: registerSchema,
+    onSubmit: (values) => {
+      dispatch(register({ name: values.name, email: values.email, password: values.password }));
+    },
+  });
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] px-4 py-12">
@@ -61,82 +49,46 @@ export default function RegisterPage() {
 
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-md p-8">
-          {/* Error */}
-          {displayError && (
+          {/* API error banner */}
+          {error && (
             <div className="mb-5 flex items-center gap-2 bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-lg">
               <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
               </svg>
-              {displayError}
+              {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Name */}
-            <div>
-              <label className="block text-sm font-medium text-[#111827] mb-1.5">
-                Full name
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                required
-                placeholder="John Doe"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-[#111827] placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-              />
-            </div>
+          <form onSubmit={formik.handleSubmit} className="space-y-5">
+            <FormField
+              label="Full name"
+              name="name"
+              type="text"
+              placeholder="John Doe"
+              formik={formik}
+            />
+            <FormField
+              label="Email address"
+              name="email"
+              type="email"
+              placeholder="you@example.com"
+              formik={formik}
+            />
+            <FormField
+              label="Password"
+              name="password"
+              type="password"
+              placeholder="Min. 6 characters"
+              formik={formik}
+            />
+            <FormField
+              label="Confirm password"
+              name="confirm"
+              type="password"
+              placeholder="••••••••"
+              formik={formik}
+            />
 
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-medium text-[#111827] mb-1.5">
-                Email address
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                required
-                placeholder="you@example.com"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-[#111827] placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-              />
-            </div>
-
-            {/* Password */}
-            <div>
-              <label className="block text-sm font-medium text-[#111827] mb-1.5">
-                Password
-              </label>
-              <input
-                type="password"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                required
-                placeholder="Min. 6 characters"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-[#111827] placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-              />
-            </div>
-
-            {/* Confirm Password */}
-            <div>
-              <label className="block text-sm font-medium text-[#111827] mb-1.5">
-                Confirm password
-              </label>
-              <input
-                type="password"
-                name="confirm"
-                value={form.confirm}
-                onChange={handleChange}
-                required
-                placeholder="••••••••"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-[#111827] placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-              />
-            </div>
-
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading}

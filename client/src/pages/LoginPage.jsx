@@ -1,14 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
+import { useFormik } from 'formik';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import { login, clearError } from '../store/slices/authSlice';
+import { loginSchema } from '../validators/auth.validator';
+import FormField from '../components/FormField';
 
 export default function LoginPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { loading, error, token } = useSelector((state) => state.auth);
-
-  const [form, setForm] = useState({ email: '', password: '' });
 
   useEffect(() => {
     dispatch(clearError());
@@ -18,14 +19,13 @@ export default function LoginPage() {
     if (token) navigate('/');
   }, [token, navigate]);
 
-  const handleChange = (e) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    dispatch(login(form));
-  };
+  const formik = useFormik({
+    initialValues: { email: '', password: '' },
+    validationSchema: loginSchema,
+    onSubmit: (values) => {
+      dispatch(login(values));
+    },
+  });
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] px-4">
@@ -59,40 +59,22 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-medium text-[#111827] mb-1.5">
-                Email address
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                required
-                placeholder="you@example.com"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-[#111827] placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-              />
-            </div>
+          <form onSubmit={formik.handleSubmit} className="space-y-5">
+            <FormField
+              label="Email address"
+              name="email"
+              type="email"
+              placeholder="you@example.com"
+              formik={formik}
+            />
+            <FormField
+              label="Password"
+              name="password"
+              type="password"
+              placeholder="••••••••"
+              formik={formik}
+            />
 
-            {/* Password */}
-            <div>
-              <label className="block text-sm font-medium text-[#111827] mb-1.5">
-                Password
-              </label>
-              <input
-                type="password"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                required
-                placeholder="••••••••"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-[#111827] placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-              />
-            </div>
-
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
