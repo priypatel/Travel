@@ -105,12 +105,65 @@ Secondary text
 
 ---
 
+Error / Validation Colors
+
+Error Red
+
+#DC2626
+
+Usage
+
+form validation error text
+invalid input borders
+error alert banners
+
+Error Background
+
+#FEF2F2
+
+Usage
+
+error alert banner background
+
+Error Border
+
+#FECACA
+
+Usage
+
+error alert banner border
+
+---
+
+Success Colors
+
+Success Green
+
+#16A34A
+
+Usage
+
+success messages
+toast notifications
+
+Success Background
+
+#F0FDF4
+
+Usage
+
+success toast background
+
+---
+
 Example Color System
 
 Primary: Indigo
 Accent: Cyan
 Background: Light Gray
 Cards: White
+Error: Red (#DC2626)
+Success: Green (#16A34A)
 
 ---
 
@@ -148,6 +201,10 @@ Body Text
 Small Text
 
 14px
+
+Error Text
+
+14px (color: #DC2626, displayed below input fields)
 
 ---
 
@@ -241,7 +298,7 @@ Card size
 
 User input area for generating itinerary
 
-Fields
+Fields (managed by Formik, validated by Yup)
 
 destination
 budget
@@ -250,7 +307,7 @@ interests
 
 Button
 
-Generate Trip
+Generate Trip (uses LoadingButton component with spinner during API call)
 
 Output
 
@@ -317,7 +374,7 @@ Desktop
 
 # UI Components
 
-Buttons
+## Buttons
 
 Primary button
 
@@ -330,9 +387,16 @@ Secondary button
 border style
 indigo text
 
+LoadingButton (reusable)
+
+extends primary button
+shows spinner icon when isLoading={true}
+disables click during loading
+text changes (e.g. "Sign in" → "Signing in...")
+
 ---
 
-Cards
+## Cards
 
 rounded-lg
 shadow-md
@@ -340,11 +404,36 @@ padding 16px
 
 ---
 
-Inputs
+## Inputs
 
 rounded
 border gray
 focus border indigo
+**error state: border #DC2626, error text #DC2626 below field**
+
+---
+
+## FormField Component (reusable)
+
+A shared component rendering:
+- Label (text-sm, font-medium, text-[#111827])
+- Input (styled per design system)
+- Error message (text-sm, text-[#DC2626], visible only when touched + invalid)
+
+Used across all forms (Login, Register, AI Search) to enforce consistent styling.
+
+---
+
+## Toast / Notification Component (reusable)
+
+A lightweight popup notification appearing at the top-right of the screen.
+
+Variants:
+- **Success**: green left border, green icon, light green background
+- **Error**: red left border, red icon, light red background
+- **Info**: indigo left border, indigo icon, light indigo background
+
+Auto-dismisses after 4 seconds. Can be manually dismissed via close button.
 
 ---
 
@@ -378,6 +467,26 @@ hamburger menu
 
 ---
 
+# Form Validation UX Patterns
+
+**Validation Timing**:
+- Validate on blur (when user leaves the field)
+- Validate on submit (all fields at once)
+- Do NOT validate on every keystroke (too aggressive)
+
+**Error Display**:
+- Inline error text appears immediately below the invalid field
+- Input border changes to #DC2626 (error red) when invalid
+- Error text uses 14px, color #DC2626
+- Errors clear automatically when the user corrects the input
+
+**Empty State**:
+- Required fields show "Required" or "[Field name] is required" on empty blur
+- Email fields show "Invalid email address" for format errors
+- Password fields show "Password must be at least 6 characters" for length errors
+
+---
+
 # Accessibility
 
 Ensure:
@@ -385,6 +494,8 @@ Ensure:
 contrast ratio above 4.5
 keyboard navigation
 aria labels for buttons
+aria-describedby linking inputs to their error messages (for screen readers)
+aria-invalid on inputs with validation errors
 
 ---
 
@@ -396,6 +507,8 @@ TailwindCSS
 Headless UI
 Framer Motion
 Mapbox GL
+Formik (form state management)
+Yup (schema-based validation)
 
 ---
 
@@ -419,3 +532,5 @@ clean UI
 fast loading
 mobile friendly
 engaging visuals
+consistent form validation UX
+reusable component library

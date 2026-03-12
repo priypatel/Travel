@@ -22,15 +22,34 @@ The application follows a straightforward navigation model built around explorat
 
 ### 2.3 Advanced AI Search Page (`/ai-search`) [Extra Feature]
 * **Title**: "Find your perfect destination (AI Powered)"
-* **Input Form**: 
-  * Location (Base/Region)
-  * Budget Range
-  * Travel Length (Days)
-  * Travel Style (e.g., Relaxing, Adventurous)
-  * Interests (e.g., Beaches, History)
-* **Action**: "Get Recommendations" Button.
+* **Input Form** (Formik + Yup validation): 
+  * Location (Base/Region) — required
+  * Budget Range — required, dropdown (Low/Medium/High)
+  * Travel Length (Days) — required, number, min 1
+  * Travel Style (e.g., Relaxing, Adventurous) — required
+  * Interests (e.g., Beaches, History) — required, at least 1
+* **Validation Behavior**: Inline error messages appear below invalid fields on blur and on submit. Fields with errors show a red border.
+* **Action**: "Get Recommendations" LoadingButton (shows spinner during API call).
 * **Results Block**: Displays AI chosen destination + textual reasoning.
 
-### 2.4 Wishlist Page (`/wishlist`) *(Protected Route)*
+### 2.4 Login Page (`/login`)
+* **Form** (Formik + Yup validation):
+  * Email — required, valid email format
+  * Password — required
+* **Validation Behavior**: Inline errors on blur/submit. Server errors (e.g., "Invalid email or password") shown in a red banner above the form.
+* **Action**: "Sign in" LoadingButton.
+* **Navigation**: Link to Register page.
+
+### 2.5 Register Page (`/register`)
+* **Form** (Formik + Yup validation):
+  * Full name — required
+  * Email — required, valid email format
+  * Password — required, min 6 characters
+  * Confirm password — required, must match password
+* **Validation Behavior**: Inline errors on blur/submit. No role selection field rendered.
+* **Action**: "Create account" LoadingButton.
+* **Navigation**: Link to Login page.
+
+### 2.6 Wishlist Page (`/wishlist`) *(Protected Route)*
 * **List View**: Grid or list of saved destination cards.
 * **Interactions**: Click to view destination, or click "Remove" to delete from wishlist.

@@ -48,6 +48,19 @@ Users can filter destinations by best visiting months.
 
 ---
 
+## Quality & Developer Experience Requirements
+
+1. Form Validation (Frontend)
+All user-facing forms use **Formik** for form state management and **Yup** for declarative schema-based validation. Inline error messages appear immediately on blur/submit, following the UI Design System's error styles.
+
+2. Error Handling (Backend)
+The Express API uses a **centralized error-handling middleware** (`errorHandler`) and a custom `AppError` class. Controllers never contain raw `try/catch` blocks; instead, an `asyncHandler` utility wraps every controller function.
+
+3. Reusable Components
+The frontend maintains a library of shared components (`FormField`, `LoadingButton`, `Toast`) and custom hooks (`useAuth`, `useApi`) to eliminate duplication across pages.
+
+---
+
 ## Target Users
 Travel enthusiasts
 Solo travelers
