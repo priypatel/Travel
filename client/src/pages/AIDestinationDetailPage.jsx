@@ -98,38 +98,107 @@ function Section({ title, icon, children }) {
   );
 }
 
-function DestinationMap({ lat, lng, name }) {
+function makeDotIcon(color, size = 14) {
+  return L.divIcon({
+    html: `<div style="width:${size}px;height:${size}px;background:${color};border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px ${color};"></div>`,
+    className: '',
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+
+const POI_COLORS = {
+  place:       '#16A34A',
+  restaurant:  '#06B6D4',
+  stay:        '#7C3AED',
+  destination: '#4F46E5',
+};
+
+async function geocode(query) {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
+      { headers: { 'Accept-Language': 'en' } }
+    );
+    const data = await res.json();
+    if (data.length > 0) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+  } catch { /* fall through */ }
+  return null;
+}
+
+function scatter(lat, lng, index) {
+  const angle = (index * 137.5 * Math.PI) / 180;
+  const radius = 0.01 + (index % 3) * 0.007;
+  return { lat: lat + Math.cos(angle) * radius, lng: lng + Math.sin(angle) * radius };
+}
+
+function DestinationMap({ lat, lng, name, places = [], restaurants = [], stays = [] }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    mapRef.current = L.map(containerRef.current).setView([lat, lng], 12);
+    mapRef.current = L.map(containerRef.current).setView([lat, lng], 13);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(mapRef.current);
 
-    const markerIcon = L.divIcon({
-      html: `<div style="width:16px;height:16px;background:#4F46E5;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px #4F46E5;"></div>`,
-      className: '',
-      iconSize: [16, 16],
-      iconAnchor: [8, 8],
-    });
-
-    L.marker([lat, lng], { icon: markerIcon })
+    L.marker([lat, lng], { icon: makeDotIcon(POI_COLORS.destination, 18) })
       .addTo(mapRef.current)
-      .bindPopup(name)
+      .bindPopup(`<b>${name}</b>`)
       .openPopup();
 
+    const pois = [
+      ...places.map((p, i)      => ({ name: p.name, type: 'Place',      color: POI_COLORS.place,      index: i })),
+      ...restaurants.map((r, i) => ({ name: r.name, type: 'Restaurant', color: POI_COLORS.restaurant, index: places.length + i })),
+      ...stays.map((s, i)       => ({ name: s.name, type: 'Stay',       color: POI_COLORS.stay,       index: places.length + restaurants.length + i })),
+    ];
+
+    let cancelled = false;
+    (async () => {
+      for (const poi of pois) {
+        if (cancelled || !mapRef.current) break;
+        await new Promise(r => setTimeout(r, 120));
+        if (cancelled || !mapRef.current) break;
+
+        const coords = await geocode(`${poi.name}, ${name}`)
+          ?? scatter(lat, lng, poi.index);
+
+        if (!cancelled && mapRef.current) {
+          L.marker([coords.lat, coords.lng], { icon: makeDotIcon(poi.color) })
+            .addTo(mapRef.current)
+            .bindPopup(`<b>${poi.name}</b><br/><span style="color:#6B7280;font-size:11px">${poi.type}</span>`);
+        }
+      }
+    })();
+
     return () => {
+      cancelled = true;
       mapRef.current?.remove();
       mapRef.current = null;
     };
   }, [lat, lng, name]);
 
-  return <div ref={containerRef} className="w-full h-64 rounded-2xl overflow-hidden" />;
+  return (
+    <div>
+      <div ref={containerRef} className="w-full h-72 rounded-2xl overflow-hidden" />
+      <div className="flex flex-wrap gap-4 mt-3 px-1 text-xs text-gray-500">
+        {[
+          { color: POI_COLORS.destination, label: 'Destination' },
+          { color: POI_COLORS.place,       label: 'Places' },
+          { color: POI_COLORS.restaurant,  label: 'Restaurants' },
+          { color: POI_COLORS.stay,        label: 'Stays' },
+        ].map(({ color, label }) => (
+          <span key={label} className="flex items-center gap-1.5">
+            <span style={{ background: color }} className="w-2.5 h-2.5 rounded-full inline-block" />
+            {label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function AIDestinationDetailPage() {
@@ -216,8 +285,15 @@ export default function AIDestinationDetailPage() {
 
         {/* Map */}
         {coordinates?.lat && coordinates?.lng && (
-          <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-10 p-2">
-            <DestinationMap lat={coordinates.lat} lng={coordinates.lng} name={name} />
+          <div className="bg-white rounded-2xl shadow-sm mb-10 p-4">
+            <DestinationMap
+              lat={coordinates.lat}
+              lng={coordinates.lng}
+              name={name}
+              places={places}
+              restaurants={restaurants}
+              stays={stays}
+            />
           </div>
         )}
 

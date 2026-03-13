@@ -168,6 +168,9 @@
 - [x] Map cleanup on component unmount
 - [x] Map centered on destination coordinates
 - [x] Map marker/pin at destination location with popup
+- [x] POI markers for Places (green), Restaurants (cyan), Stays (purple) on map
+- [x] Each POI marker has popup with name and type
+- [x] Nominatim geocoding for POI coordinates with fallback scatter
 
 ---
 
