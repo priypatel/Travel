@@ -226,13 +226,14 @@ export default function AIDestinationDetailPage() {
   const budget      = searchParams.get('budget') || 'mid-range';
   const days        = searchParams.get('days') || '5';
   const name        = searchParams.get('name') || '';
+  const style       = searchParams.get('style') || '';
   const fromWishlist = searchParams.get('from') === 'wishlist';
   const dispatch = useDispatch();
   const { destinationDetail, detailLoading, detailError } = useSelector((state) => state.ai);
   const [activeTab, setActiveTab] = useState(0);
 
   useEffect(() => {
-    if (slug) dispatch(getAIDestinationBySlug({ slug, budget, days, name }));
+    if (slug) dispatch(getAIDestinationBySlug({ slug, budget, days, name, style }));
     return () => dispatch(clearAIDetail());
   }, [dispatch, slug]);
 
@@ -304,6 +305,13 @@ export default function AIDestinationDetailPage() {
                 <WishlistButton destinationId={destination._id} size="md" className="shrink-0" />
               )}
             </div>
+            {style && (
+              <div className="mt-2">
+                <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm text-white text-sm font-semibold px-3 py-1 rounded-full">
+                  ✦ {style}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </section>

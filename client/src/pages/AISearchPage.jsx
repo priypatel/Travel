@@ -67,6 +67,11 @@ function DestinationCard({ dest, index, budget, days, onExplore }) {
 
       {/* Body */}
       <div className="p-4 flex-1 flex flex-col">
+        {dest.planStyle && (
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#4F46E5] bg-indigo-50 px-2.5 py-1 rounded-full mb-2 w-fit">
+            ✦ {dest.planStyle}
+          </span>
+        )}
         <h3 className="text-lg font-bold text-[#0F172A] leading-tight">{dest.destinationName}</h3>
         {dest.country && (
           <div className="flex items-center gap-1 mt-0.5 mb-2">
@@ -135,9 +140,14 @@ export default function AISearchPage() {
   };
 
   const handleExplore = (dest, budget, days) => {
-    navigate(
-      `/ai-destination?slug=${dest.slug}&budget=${budget}&days=${days}&name=${encodeURIComponent(dest.destinationName)}`
-    );
+    const params = new URLSearchParams({
+      slug: dest.slug,
+      budget,
+      days,
+      name: dest.destinationName,
+      ...(dest.planStyle ? { style: dest.planStyle } : {}),
+    });
+    navigate(`/ai-destination?${params}`);
   };
 
   return (

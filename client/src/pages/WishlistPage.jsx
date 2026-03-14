@@ -5,10 +5,10 @@ import { fetchWishlist, removeFromWishlist } from '../store/slices/wishlistSlice
 
 function WishlistCard({ destination }) {
   const dispatch = useDispatch();
-  const { _id, name, country, description, bestTime, heroImage, tags, aiGenerated, slug } = destination;
+  const { _id, name, country, description, bestTime, heroImage, tags, aiGenerated, slug, planStyle } = destination;
   const badge = tags?.[0] || null;
   const detailPath = aiGenerated
-    ? `/ai-destination?slug=${slug}&name=${encodeURIComponent(name)}&from=wishlist`
+    ? `/ai-destination?slug=${slug}&name=${encodeURIComponent(name)}${planStyle ? `&style=${encodeURIComponent(planStyle)}` : ''}&from=wishlist`
     : `/destinations/${_id}?from=wishlist`;
 
   return (

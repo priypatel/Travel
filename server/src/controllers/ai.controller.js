@@ -22,23 +22,29 @@ function searchHash(payload) {
 }
 
 // POST /api/ai/recommend
-// Phase 1 only: returns 4 destination cards quickly
+// Phase 1: returns 3 style-variant cards (location mode) or 4 global cards (blank mode)
 export const recommend = asyncHandler(async (req, res) => {
   const { location, budget, days, travelStyle, interests } = req.body;
 
-  // Check search cache
+  // v3 cache key — v3 adds planStyle to response shape
   const hash = searchHash({ location, budget, days, travelStyle, interests });
-  const searchCacheKey = `ai:search:v2:${hash}`;
+  const searchCacheKey = `ai:search:v3:${hash}`;
   const cached = await redisGet(searchCacheKey);
   if (cached) {
     return res.status(200).json({ status: 'success', data: { destinations: cached, source: 'cache' } });
   }
 
-  // Phase 1: Get 4 destination names
   let destinations;
   try {
     const raw = await getTopDestinations({ location, budget, days, travelStyle, interests });
-    const withSlugs = raw.map((d) => ({ ...d, slug: toSlug(`${d.destinationName}`) }));
+
+    // Slug: location mode → "{region}-{style}", global mode → "{destination}"
+    const withSlugs = raw.map((d) => ({
+      ...d,
+      slug: d.planStyle
+        ? toSlug(`${d.destinationName}-${d.planStyle}`)
+        : toSlug(`${d.destinationName}`),
+    }));
 
     // Upsert lightweight DB entries so each card gets a real _id for wishlisting
     destinations = await Promise.all(
@@ -55,6 +61,7 @@ export const recommend = asyncHandler(async (req, res) => {
               tags: d.tags || [],
               heroImage: '',
               aiGenerated: true,
+              planStyle: d.planStyle || '',
             },
           },
           { upsert: true, new: true, setDefaultsOnInsert: true }
@@ -72,14 +79,14 @@ export const recommend = asyncHandler(async (req, res) => {
   res.status(200).json({ status: 'success', data: { destinations, source: 'ai' } });
 });
 
-// GET /api/ai/destination/:slug?budget=mid-range&days=5
+// GET /api/ai/destination/:slug?budget=mid-range&days=5&name=...&style=...
 // Phase 2 on demand: returns full itinerary for one destination
 export const getDestinationBySlug = asyncHandler(async (req, res) => {
   const { slug } = req.params;
-  const { budget = 'mid-range', days = 5, name } = req.query;
+  const { budget = 'mid-range', days = 5, name, style } = req.query;
   if (!slug) throw new AppError('Slug is required', 400);
 
-  // Check Redis — versioned key so stale pre-upsert caches are ignored
+  // v2 cache key — versioned to avoid serving stale pre-upsert cached docs
   const destCacheKey = `ai:dest:v2:${slug}`;
   const cached = await redisGet(destCacheKey);
   if (cached) {
@@ -94,14 +101,16 @@ export const getDestinationBySlug = asyncHandler(async (req, res) => {
     ? decodeURIComponent(name)
     : slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
+  const planStyle = style ? decodeURIComponent(style) : null;
+
   // Check MongoDB — may find a Phase 1 stub (no travelPlans) or a full doc
   let destination = await Destination.findOne({ slug, aiGenerated: true });
 
-  // Need to generate if: doc doesn't exist, OR it's a Phase 1 stub with no itinerary
+  // Generate if: doc doesn't exist, OR it's a Phase 1 stub with no itinerary
   if (!destination || !destination.travelPlans?.length) {
     let itinerary;
     try {
-      itinerary = await getFullItinerary(destinationName, budget, Number(days));
+      itinerary = await getFullItinerary(destinationName, budget, Number(days), planStyle);
     } catch (err) {
       throw new AppError(err.message || 'Failed to generate itinerary.', 502);
     }
@@ -137,6 +146,7 @@ export const getDestinationBySlug = asyncHandler(async (req, res) => {
         coordinates: itinerary.coordinates,
         travelPlans: itinerary.plans,
         aiGenerated: true,
+        planStyle: planStyle || '',
         bestTime: '',
         heroImage: '',
         tags: [],

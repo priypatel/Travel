@@ -25,40 +25,69 @@ async function callGemini(prompt) {
 }
 
 /**
- * Phase 1: Get 3-5 destination recommendations (fast, names only).
- * Returns array of { destinationName, country, reason, bestSeason }
+ * Phase 1: Get destination recommendations.
+ *
+ * LOCATION MODE  (location provided):
+ *   Returns 3 different travel-style variants for the same region.
+ *   e.g. "Kashmir" → Classic Explorer, Adventure Route, Hidden Gems
+ *   Each card has planStyle field; slugs are "{region}-{style}".
+ *
+ * GLOBAL MODE (no location):
+ *   Returns 4 different global destinations (existing behaviour).
+ *   planStyle is null.
  */
 export async function getTopDestinations({ location, budget, days, travelStyle, interests }) {
   const interestList = Array.isArray(interests) ? interests.join(', ') : interests;
   const hasLocation = location && location.trim();
 
-  const scope = hasLocation
-    ? `The traveller wants to explore WITHIN "${location.trim()}". Recommend 4 different specific places, cities, or sub-regions INSIDE "${location.trim()}" — do NOT go outside this region.`
-    : 'The traveller is open to anywhere in the world. Recommend 4 different well-known global destinations.';
+  let prompt;
 
-  const exampleDestinations = hasLocation
-    ? `For example, if the region is "Kashmir" suggest places like "Dal Lake, Srinagar", "Gulmarg", "Pahalgam", "Sonamarg". If "India" suggest "Kerala", "Rajasthan", "Goa", "Ladakh". If "Thailand" suggest "Bangkok", "Chiang Mai", "Phuket", "Koh Samui".`
-    : `For example, suggest "Bali, Indonesia", "Kyoto, Japan", "Santorini, Greece", "Cape Town, South Africa".`;
+  if (hasLocation) {
+    const loc = location.trim();
+    prompt = `You are an expert travel planner. The traveller wants to explore "${loc}". Budget: ${budget}. Duration: ${days} days. Travel style: ${travelStyle}. Interests: ${interestList}.
 
-  const prompt = `You are an expert travel planner. ${scope} Budget: ${budget}. Duration: ${days} days. Travel style: ${travelStyle}. Interests: ${interestList}.
+Generate 3 different ${days}-day trip styles for "${loc}". Each style highlights different experiences, places, and vibes within "${loc}".
 
-${exampleDestinations}
+Return ONLY a JSON array with exactly 3 items, no other text:
+[
+  {
+    "destinationName": "${loc}",
+    "country": "Sovereign country name",
+    "planStyle": "Style name",
+    "reason": "2 sentences describing what makes this travel style special for ${loc} and which places/experiences it covers",
+    "bestSeason": "Best time to visit (e.g. October to April)",
+    "tags": ["tag1", "tag2", "tag3"]
+  }
+]
+Rules:
+- All 3 must have "destinationName" exactly as "${loc}"
+- "country" must be the sovereign country (e.g. "India" for Kashmir, not "Jammu & Kashmir")
+- Each "planStyle" must be DIFFERENT — choose 3 from: Classic Explorer, Adventure Route, Hidden Gems, Cultural Immersion, Luxury Escape, Budget Journey, Nature Retreat, Romantic Getaway, Family Fun — pick styles that best match ${travelStyle} style and ${interestList} interests
+- Each "reason" describes DIFFERENT places and experiences within "${loc}"
+- "tags" should reflect that specific travel style
+- No markdown, no extra text outside the JSON array`;
+  } else {
+    prompt = `You are an expert travel planner. The traveller is open to anywhere in the world. Budget: ${budget}. Duration: ${days} days. Travel style: ${travelStyle}. Interests: ${interestList}.
+
+Recommend 4 different well-known global destinations from different parts of the world.
+For example, suggest "Bali, Indonesia", "Kyoto, Japan", "Santorini, Greece", "Cape Town, South Africa".
 
 Return ONLY a JSON array with exactly 4 items, no other text:
 [
   {
-    "destinationName": "Specific place name (city, area, or sub-region)",
+    "destinationName": "Specific place name (city, area, or country)",
     "country": "Sovereign country name",
-    "reason": "2 sentences on why this specific place fits the budget, travel style, and interests",
+    "reason": "2 sentences on why this destination fits the budget, travel style, and interests",
     "bestSeason": "e.g. October to April",
     "tags": ["tag1", "tag2", "tag3"]
   }
 ]
 Rules:
-- All 4 must be DIFFERENT places${hasLocation ? ` within or closely associated with "${location.trim()}"` : ' from different parts of the world'}
-- "country" must always be the sovereign country (e.g. "India" not "Jammu & Kashmir" or "Kashmir")
-- "destinationName" should be a specific well-known place name (e.g. "Gulmarg" not just "Kashmir")
+- All 4 must be DIFFERENT places from different parts of the world
+- "country" must always be the sovereign country
+- "destinationName" should be a specific well-known place name
 - No markdown, no extra text outside the JSON array`;
+  }
 
   const text = await callGemini(prompt);
   let parsed;
@@ -66,32 +95,59 @@ Rules:
   if (!Array.isArray(parsed) || parsed.length === 0) throw new Error('Gemini returned empty destinations list');
   return parsed.map((d) => ({
     destinationName: String(d.destinationName || ''),
-    country: String(d.country || ''),
-    reason: String(d.reason || ''),
-    bestSeason: String(d.bestSeason || ''),
-    tags: Array.isArray(d.tags) ? d.tags : [],
+    country:         String(d.country || ''),
+    planStyle:       d.planStyle ? String(d.planStyle) : null,
+    reason:          String(d.reason || ''),
+    bestSeason:      String(d.bestSeason || ''),
+    tags:            Array.isArray(d.tags) ? d.tags : [],
   }));
 }
 
 /**
  * Phase 2: Get full itinerary for ONE destination (called on-demand from detail page).
+ * planStyle — optional travel style (e.g. "Adventure Route"). When provided, the
+ * itinerary covers multiple places spread across the whole region in that style.
  * Returns { description, coordinates, plans[2] }
  */
-export async function getFullItinerary(destinationName, budget, days) {
+export async function getFullItinerary(destinationName, budget, days, planStyle = null) {
   const numPlaces = Math.max(3, Math.min(days, 7));
   const budgetLabel = budget === 'budget' ? 'budget-friendly' : budget === 'luxury' ? 'luxury' : 'mid-range';
 
-  const prompt = `You are an expert travel guide. Generate a detailed ${days}-day travel itinerary for "${destinationName}" suited for ${budgetLabel} travellers. Return ONLY strict JSON with this exact structure, no markdown:
+  const styleGuide = planStyle
+    ? `Travel style: "${planStyle}". Tailor ALL place selections, restaurants, and stays to match this style:
+- Classic Explorer → iconic landmarks, famous sights, must-see spots
+- Adventure Route → outdoor activities, treks, hikes, sport activities
+- Hidden Gems → offbeat spots, local neighbourhoods, lesser-known places
+- Cultural Immersion → temples, museums, history, local cuisine, festivals
+- Luxury Escape → premium experiences, fine dining, luxury stays
+- Budget Journey → affordable activities, street food, budget-friendly stays
+- Nature Retreat → parks, wildlife, forests, scenic landscapes
+- Romantic Getaway → scenic spots, sunset views, couple activities
+- Family Fun → family-friendly attractions, parks, easy walks`
+    : '';
+
+  const regionGuide = planStyle
+    ? `Each day must visit a DIFFERENT area or sub-region of "${destinationName}" — spread the itinerary across the whole region, not just one city.`
+    : '';
+
+  const plan1Title = planStyle || 'Classic Explorer';
+  const plan2Title = planStyle ? `${planStyle} — Alternative` : 'Hidden Gems';
+
+  const prompt = `You are an expert travel guide. Generate a detailed ${days}-day travel itinerary for "${destinationName}" suited for ${budgetLabel} travellers.
+${styleGuide}
+${regionGuide}
+
+Return ONLY strict JSON with this exact structure, no markdown:
 {
-  "description": "3-4 sentence overview of this destination",
+  "description": "3-4 sentence overview of this ${planStyle ? planStyle + ' trip to ' : ''}${destinationName}",
   "coordinates": { "lat": <decimal>, "lng": <decimal> },
   "plans": [
     {
-      "title": "Classic Explorer",
+      "title": "${plan1Title}",
       "places": [
         {
           "dayIndex": 1,
-          "name": "place name",
+          "name": "specific place name within ${destinationName}",
           "category": "Nature|History|Culture|Adventure|Beach|Market|Museum|Temple|Monument|Other",
           "description": "2 sentences about this place",
           "coordinates": { "lat": <decimal>, "lng": <decimal> },
@@ -107,14 +163,14 @@ export async function getFullItinerary(destinationName, budget, days) {
       ]
     },
     {
-      "title": "Hidden Gems",
+      "title": "${plan2Title}",
       "places": []
     }
   ]
 }
 Rules:
-- Plan 1 "Classic Explorer": exactly ${numPlaces} places, dayIndex 1 to ${numPlaces}
-- Plan 2 "Hidden Gems": exactly ${numPlaces} different places, dayIndex 1 to ${numPlaces}
+- Plan 1 "${plan1Title}": exactly ${numPlaces} places, dayIndex 1 to ${numPlaces}${planStyle ? `, each place must reflect the "${planStyle}" theme and cover a different part of "${destinationName}"` : ''}
+- Plan 2 "${plan2Title}": exactly ${numPlaces} DIFFERENT places, dayIndex 1 to ${numPlaces}
 - Each place must have exactly 2 restaurants and 2 stays matching "${budget}" price level
 - All coordinates must be real decimal numbers for the specific location`;
 
