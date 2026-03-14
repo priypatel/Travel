@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { getDestinationDetail, clearDetail } from '../store/slices/destinationSlice';
+import WishlistButton from '../components/WishlistButton';
 
 // ── Category config ────────────────────────────────────────────────────────────
 const CATEGORY_COLORS = {
@@ -322,8 +323,11 @@ export default function DestinationDetailPage() {
             All destinations
           </Link>
           <div className="flex flex-wrap items-end gap-4">
-            <div>
-              <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight">{detail.name}</h1>
+            <div className="flex-1">
+              <div className="flex items-center gap-3">
+                <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight">{detail.name}</h1>
+                <WishlistButton destinationId={detail._id} size="md" className="shrink-0" />
+              </div>
               <p className="text-white/80 mt-1 text-lg">{detail.country}</p>
             </div>
             <div className="flex flex-wrap gap-2 mb-1">

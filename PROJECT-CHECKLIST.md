@@ -149,23 +149,23 @@
 - [x] `POST /api/ai/recommend` — Yup validated 5 fields, wired in `app.js`
 - [x] Gemini response parsed and validated
 
-### Backend — AI Recommendation (Enhanced) 🔲
+### Backend — AI Recommendation (Enhanced) ✅
 
-- [ ] `server/src/services/redis.service.js` — Upstash Redis `get/set/del` helpers (`@upstash/redis`)
-- [ ] `REDIS_URL` + `REDIS_TOKEN` added to `server/.env`
-- [ ] Updated `Destination` model: `slug` (unique), `aiGenerated`, `travelPlans[]`
-- [ ] Updated `Place` model: `coordinates {lat,lng}`, `dayIndex`
-- [ ] Updated `Restaurant` model: optional `placeId` ref
-- [ ] Updated `PropertyStay` model: optional `placeId` ref
-- [ ] Two-phase Gemini prompting: Phase 1 (name only) → Phase 2 (full itinerary JSON)
-- [ ] Phase 2 prompt: 2 travel plans, days-aware place count, budget-matched restaurants/stays per place
-- [ ] AI controller: Redis search cache check → Redis dest cache → MongoDB slug lookup → Gemini
-- [ ] AI-generated destination persisted to MongoDB (Destination + Places + Restaurants + Stays)
-- [ ] Cache full result in Redis (`ai:dest:{slug}` TTL 7d, `ai:search:{hash}` TTL 1d)
-- [ ] Response includes `source: "cache" | "db" | "ai"`
-- [ ] `GET /api/ai/destination/:slug` endpoint — Redis → MongoDB lookup
-- [ ] `GET /destinations/:id/places/:placeId/restaurants` — restaurants near specific place
-- [ ] `GET /destinations/:id/places/:placeId/stays` — stays near specific place
+- [x] `server/src/services/redis.service.js` — Upstash Redis `get/set/del` helpers (`@upstash/redis`)
+- [x] `REDIS_URL` + `REDIS_TOKEN` added to `server/.env`
+- [x] Updated `Destination` model: `slug` (unique), `aiGenerated`, `travelPlans[]`
+- [x] Updated `Place` model: `coordinates {lat,lng}`, `dayIndex`
+- [x] Updated `Restaurant` model: optional `placeId` ref
+- [x] Updated `PropertyStay` model: optional `placeId` ref
+- [x] Two-phase Gemini prompting: Phase 1 returns 4 destinations → Phase 2 full itinerary on demand
+- [x] Phase 2 prompt: 2 travel plans, days-aware place count, budget-matched restaurants/stays per place
+- [x] AI controller: Redis search cache check → Redis dest cache → MongoDB slug lookup → Gemini
+- [x] AI-generated destination persisted to MongoDB with `aiGenerated: true` flag
+- [x] Cache full result in Redis (`ai:dest:{slug}` TTL 7d, `ai:search:{hash}` TTL 1d)
+- [x] Response includes `source: "cache" | "db" | "ai"`
+- [x] `GET /api/ai/destination/:slug` endpoint — Redis → MongoDB lookup
+- [x] `GET /destinations/:id/places/:placeId/restaurants` — restaurants near specific place
+- [x] `GET /destinations/:id/places/:placeId/stays` — stays near specific place
 
 ### Frontend — AI Search Page (`/ai-search`) (Basic) ✅
 
@@ -175,22 +175,25 @@
 - [x] Result card — destination name + reason paragraph
 - [x] Error state if Gemini fails
 
-### Frontend — AI Search Page (Enhanced) 🔲
+### Frontend — AI Search Page (Enhanced) ✅
 
-- [ ] Result card shows 4–5 place preview cards (day badge, name, category chip)
-- [ ] "View Full Itinerary →" button → `/ai-destination?name={slug}`
-- [ ] "New Search" button resets form and clears result
+- [x] Shows 4 destination cards styled like regular destination cards (gradient hero, tags, reason, best season)
+- [x] Location-aware: "Kashmir" → 4 places within Kashmir; blank → 4 global destinations
+- [x] "Explore →" button navigates to `/ai-destination?slug=...&budget=...&days=...&name=...`
+- [x] "New Search" button resets results
+- [x] Results header shows "Places to Visit in {location}" or "Recommended for You"
+- [x] Budget options updated to `budget / mid-range / luxury`
 
-### Frontend — AI Destination Detail Page (`/ai-destination`) 🔲
+### Frontend — AI Destination Detail Page (`/ai-destination`) ✅
 
-- [ ] Fetches data from Redux state (from search) or `GET /api/ai/destination/:slug`
-- [ ] Gradient hero with destination name, country, description, best time
-- [ ] Two plan tabs (Plan 1 / Plan 2)
-- [ ] Active plan shows numbered place cards (Day 1, Day 2…)
-- [ ] Each place shows 2 restaurants (budget-matched) and 2 stays (budget-matched)
-- [ ] Map with all place/restaurant/stay markers
-- [ ] `source` badge: "AI Generated" or "From Database"
-- [ ] Loading skeleton while fetching
+- [x] Fetches on-demand via `GET /api/ai/destination/:slug` (budget + days passed as query params)
+- [x] Gradient hero with destination name, country, "AI Generated Itinerary" badge
+- [x] Two plan tabs (Classic Explorer / Hidden Gems)
+- [x] Active plan shows numbered Day cards (Day 1, Day 2…) with category icon + description
+- [x] Each place shows 2 restaurants (budget-matched) and 2 stays (budget-matched)
+- [x] Map with place POI markers and Nominatim geocoding
+- [x] Loading skeleton with "Generating itinerary…" message
+- [x] Error state with back link
 
 ### Frontend — Map Integration (Destination Detail) ✅
 
@@ -208,22 +211,24 @@
 
 ## Phase 4 — Wishlist + Polish + Deployment
 
-### Backend — Wishlist
+### Backend — Wishlist ✅
 
-- [ ] `Wishlist` model (userId ref, destinationId ref, createdAt)
-- [ ] `POST /api/wishlist/add` — protected, add destination to wishlist (no duplicates)
-- [ ] `GET /api/wishlist` — protected, return user's saved destinations (populated)
-- [ ] `DELETE /api/wishlist/:id` — protected, remove from wishlist
-- [ ] Wishlist routes wired in `app.js`
+- [x] `Wishlist` model (userId ref, destinationId ref, createdAt, unique index)
+- [x] `POST /api/wishlist/add` — protected, add destination to wishlist (no duplicates, 409 on repeat)
+- [x] `GET /api/wishlist` — protected, return user's saved destinations (populated)
+- [x] `GET /api/wishlist/ids` — protected, return array of saved destinationId strings
+- [x] `DELETE /api/wishlist/:id` — protected, remove from wishlist by destinationId
+- [x] Wishlist routes wired in `app.js`
 
-### Frontend — Wishlist
+### Frontend — Wishlist ✅
 
-- [ ] `wishlistSlice.js` — `fetchWishlist`, `addToWishlist`, `removeFromWishlist` thunks
-- [ ] `wishlistApi.js` — Axios calls
-- [ ] Heart/bookmark button on destination cards — toggles wishlist state
-- [ ] `WishlistPage` (`/wishlist`) — grid of saved destination cards
-- [ ] Protected route — redirect to `/login` if unauthenticated
-- [ ] Empty state message if wishlist is empty
+- [x] `wishlistSlice.js` — `fetchWishlist`, `addToWishlist`, `removeFromWishlist` thunks + `savedIds` Set
+- [x] `wishlistApi.js` — Axios calls
+- [x] Heart button on destination cards — filled red if saved, outline if not, hidden when not logged in
+- [x] `WishlistPage` (`/wishlist`) — grid of saved destination cards with remove button
+- [x] Protected route — redirect to `/login` if unauthenticated
+- [x] Empty state with illustration and "Browse Destinations" CTA
+- [x] Wishlist auto-fetched on login (heart state instantly correct on home page)
 
 ### Frontend — Reusable Components Polish
 
@@ -277,6 +282,6 @@
 | Phase 1 — Foundation                      | 35      | 35     |
 | Phase 2 — Core Data + Pages               | 28      | 28     |
 | Phase 3 — AI Basic                        | 12      | 12     |
-| Phase 3 — AI Enhanced (Redis + Itinerary) | 17      | 0      |
-| Phase 4 — Wishlist + Polish + Deploy      | 28      | 0      |
-| **Total**                                 | **120** | **75** |
+| Phase 3 — AI Enhanced (Redis + Itinerary) | 17      | 17     |
+| Phase 4 — Wishlist + Polish + Deploy      | 28      | 11     |
+| **Total**                                 | **120** | **103** |

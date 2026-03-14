@@ -1,10 +1,5 @@
 import { Link } from 'react-router-dom';
-
-const PRICE_LABEL = {
-  '$': 'Budget',
-  '$$': 'Mid-range',
-  '$$$': 'Luxury',
-};
+import WishlistButton from './WishlistButton';
 
 export default function DestinationCard({ destination }) {
   const { _id, name, country, description, bestTime, heroImage, tags } = destination;
@@ -15,25 +10,23 @@ export default function DestinationCard({ destination }) {
       to={`/destinations/${_id}`}
       className="group block bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 w-full cursor-pointer"
     >
-      {/* Image */}
       <div className="relative h-48 overflow-hidden">
         <img
           src={heroImage}
           alt={name}
-          className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           loading="lazy"
         />
         {badge && (
-          <span className="absolute top-3 right-3 bg-amber-400 text-white text-xs font-semibold px-2.5 py-1 rounded-full uppercase tracking-wide">
+          <span className="absolute top-3 left-3 bg-amber-400 text-white text-xs font-semibold px-2.5 py-1 rounded-full uppercase tracking-wide">
             {badge}
           </span>
         )}
+        <WishlistButton destinationId={_id} className="absolute bottom-3 right-3" />
       </div>
 
-      {/* Body */}
       <div className="p-4">
         <h3 className="text-base font-bold text-[#0F172A] mb-0.5">{name}</h3>
-
         <div className="flex items-center gap-1 text-gray-400 text-xs mb-2">
           <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -42,9 +35,7 @@ export default function DestinationCard({ destination }) {
           </svg>
           {country}
         </div>
-
         <p className="text-xs text-gray-500 line-clamp-2 mb-3">{description}</p>
-
         <div className="flex items-center gap-1 text-xs text-gray-400 mb-3">
           <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -52,7 +43,6 @@ export default function DestinationCard({ destination }) {
           </svg>
           {bestTime}
         </div>
-
         <span className="inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 group-hover:text-indigo-700 transition-colors">
           Explore
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
