@@ -28,7 +28,7 @@ export const recommend = asyncHandler(async (req, res) => {
 
   // Check search cache
   const hash = searchHash({ location, budget, days, travelStyle, interests });
-  const searchCacheKey = `ai:search:${hash}`;
+  const searchCacheKey = `ai:search:v2:${hash}`;
   const cached = await redisGet(searchCacheKey);
   if (cached) {
     return res.status(200).json({ status: 'success', data: { destinations: cached, source: 'cache' } });
@@ -79,8 +79,8 @@ export const getDestinationBySlug = asyncHandler(async (req, res) => {
   const { budget = 'mid-range', days = 5, name } = req.query;
   if (!slug) throw new AppError('Slug is required', 400);
 
-  // Check Redis
-  const destCacheKey = `ai:dest:${slug}`;
+  // Check Redis — versioned key so stale pre-upsert caches are ignored
+  const destCacheKey = `ai:dest:v2:${slug}`;
   const cached = await redisGet(destCacheKey);
   if (cached) {
     return res.status(200).json({
@@ -89,16 +89,16 @@ export const getDestinationBySlug = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check MongoDB
+  // Resolve destination name from query param or slug
+  const destinationName = name
+    ? decodeURIComponent(name)
+    : slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+  // Check MongoDB — may find a Phase 1 stub (no travelPlans) or a full doc
   let destination = await Destination.findOne({ slug, aiGenerated: true });
 
-  if (!destination) {
-    // Resolve destination name from slug or query param
-    const destinationName = name
-      ? decodeURIComponent(name)
-      : slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-
-    // Phase 2: Full itinerary
+  // Need to generate if: doc doesn't exist, OR it's a Phase 1 stub with no itinerary
+  if (!destination || !destination.travelPlans?.length) {
     let itinerary;
     try {
       itinerary = await getFullItinerary(destinationName, budget, Number(days));
@@ -112,18 +112,36 @@ export const getDestinationBySlug = asyncHandler(async (req, res) => {
     if (!destName || destName.toLowerCase() === 'undefined') {
       throw new AppError('Invalid destination name returned by AI', 502);
     }
-    destination = await Destination.create({
-      name: destName,
-      country: destCountry,
-      slug,
-      description: itinerary.description,
-      coordinates: itinerary.coordinates,
-      travelPlans: itinerary.plans,
-      aiGenerated: true,
-      bestTime: '',
-      heroImage: '',
-      tags: [],
-    });
+
+    if (destination) {
+      // Update the Phase 1 stub in-place — preserves the same _id (critical for wishlist matching)
+      destination = await Destination.findByIdAndUpdate(
+        destination._id,
+        {
+          $set: {
+            name: destName || destination.name,
+            country: destCountry || destination.country,
+            description: itinerary.description,
+            coordinates: itinerary.coordinates,
+            travelPlans: itinerary.plans,
+          },
+        },
+        { new: true }
+      );
+    } else {
+      destination = await Destination.create({
+        name: destName,
+        country: destCountry,
+        slug,
+        description: itinerary.description,
+        coordinates: itinerary.coordinates,
+        travelPlans: itinerary.plans,
+        aiGenerated: true,
+        bestTime: '',
+        heroImage: '',
+        tags: [],
+      });
+    }
   }
 
   // Cache 7d
