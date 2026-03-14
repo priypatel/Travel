@@ -38,10 +38,30 @@ export const recommend = asyncHandler(async (req, res) => {
   let destinations;
   try {
     const raw = await getTopDestinations({ location, budget, days, travelStyle, interests });
-    destinations = raw.map((d) => ({
-      ...d,
-      slug: toSlug(`${d.destinationName}`),
-    }));
+    const withSlugs = raw.map((d) => ({ ...d, slug: toSlug(`${d.destinationName}`) }));
+
+    // Upsert lightweight DB entries so each card gets a real _id for wishlisting
+    destinations = await Promise.all(
+      withSlugs.map(async (d) => {
+        const doc = await Destination.findOneAndUpdate(
+          { slug: d.slug },
+          {
+            $setOnInsert: {
+              name: d.destinationName,
+              country: d.country,
+              slug: d.slug,
+              description: d.reason,
+              bestTime: d.bestSeason,
+              tags: d.tags || [],
+              heroImage: '',
+              aiGenerated: true,
+            },
+          },
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+        return { ...d, _id: String(doc._id) };
+      })
+    );
   } catch (err) {
     throw new AppError(err.message || 'AI recommendation failed. Please try again.', 502);
   }

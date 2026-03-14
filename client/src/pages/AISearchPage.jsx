@@ -4,6 +4,7 @@ import { useFormik } from 'formik';
 import * as yup from 'yup';
 import { useNavigate } from 'react-router-dom';
 import { getAIRecommendation, clearAIResult } from '../store/slices/aiSlice';
+import WishlistButton from '../components/WishlistButton';
 
 const BUDGET_OPTIONS = [
   { value: 'budget',    label: 'Budget / Backpacker' },
@@ -45,6 +46,7 @@ const validationSchema = yup.object({
 
 function DestinationCard({ dest, index, budget, days, onExplore }) {
   const gradient = CARD_GRADIENTS[index % CARD_GRADIENTS.length];
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow flex flex-col">
       {/* Hero gradient */}
@@ -58,6 +60,9 @@ function DestinationCard({ dest, index, budget, days, onExplore }) {
             </span>
           ))}
         </div>
+        {dest._id && (
+          <WishlistButton destinationId={dest._id} className="absolute top-3 right-3" />
+        )}
       </div>
 
       {/* Body */}

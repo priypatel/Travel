@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { getAIDestinationBySlug, clearAIDetail } from '../store/slices/aiSlice';
+import WishlistButton from '../components/WishlistButton';
 
 const CATEGORY_COLORS = {
   Nature:      { bg: 'bg-emerald-50', text: 'text-emerald-600', icon: '🌿' },
@@ -221,10 +222,10 @@ function DestinationMap({ lat, lng, name, places = [] }) {
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function AIDestinationDetailPage() {
   const [searchParams] = useSearchParams();
-  const slug = searchParams.get('slug') || '';
-  const budget = searchParams.get('budget') || 'mid-range';
-  const days = searchParams.get('days') || '5';
-  const name = searchParams.get('name') || '';
+  const slug     = searchParams.get('slug') || '';
+  const budget   = searchParams.get('budget') || 'mid-range';
+  const days     = searchParams.get('days') || '5';
+  const name     = searchParams.get('name') || '';
   const dispatch = useDispatch();
   const { destinationDetail, detailLoading, detailError } = useSelector((state) => state.ai);
   const [activeTab, setActiveTab] = useState(0);
@@ -291,12 +292,17 @@ export default function AIDestinationDetailPage() {
               </svg>
               AI Generated Itinerary
             </span>
-            <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight">
-              {destination?.name}
-              {destination?.country && (
-                <span className="text-indigo-200 font-normal text-3xl">, {destination.country}</span>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight">
+                {destination?.name}
+                {destination?.country && (
+                  <span className="text-indigo-200 font-normal text-3xl">, {destination.country}</span>
+                )}
+              </h1>
+              {destination?._id && (
+                <WishlistButton destinationId={destination._id} size="md" className="shrink-0" />
               )}
-            </h1>
+            </div>
           </div>
         </div>
       </section>
