@@ -8,6 +8,11 @@ const restaurantSchema = new mongoose.Schema(
       required: [true, 'Destination ID is required'],
       index: true,
     },
+    placeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Place',
+      default: null,
+    },
     name: {
       type: String,
       required: [true, 'Restaurant name is required'],
@@ -21,7 +26,7 @@ const restaurantSchema = new mongoose.Schema(
     priceLevel: {
       type: String,
       required: [true, 'Price level is required'],
-      enum: ['$', '$$', '$$$'],
+      enum: ['budget', 'mid-range', 'luxury'],
     },
     rating: {
       type: Number,

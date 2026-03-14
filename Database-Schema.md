@@ -1,7 +1,7 @@
 # Database Schema
 
 ## Overview
-The platform utilizes a structured NoSQL approach with MongoDB (`travel_ai_db`). The collections are heavily relational, utilizing `ObjectId` referencing for associated entities (Places, Restaurants, Property Stays, Wishlists) to avoid massive document bloat on the top-level Destination items.
+The platform utilizes a structured NoSQL approach with MongoDB (`travel_ai_db`). Collections use `ObjectId` referencing for associated entities. AI-generated destinations are persisted alongside manually seeded destinations, identified by the `aiGenerated` flag.
 
 ## 1. Users Collection
 ```json
@@ -13,26 +13,36 @@ The platform utilizes a structured NoSQL approach with MongoDB (`travel_ai_db`).
   "role": "String (either 'user' or 'admin', default is 'user')",
   "createdAt": "Date"
 }
-
-*Note: Admins cannot be created via the frontend UI. A manual database entry or a backend seed script is required to provision an admin account.*
 ```
+*Note: Admins cannot be created via the frontend UI. A manual seed script is required.*
 
 ## 2. Destinations Collection
 ```json
 {
   "_id": "ObjectId",
   "name": "String",
+  "slug": "String (Unique, lowercase-hyphen, e.g. 'kashmir-india')",
   "country": "String",
   "description": "String",
-  "bestTime": "String (e.g., 'October-March')",
+  "bestTime": "String (e.g., 'March-October')",
   "heroImage": "String (URL)",
-  "coordinates": { 
-    "lat": "Number", 
-    "lng": "Number" 
+  "tags": ["String"],
+  "coordinates": {
+    "lat": "Number",
+    "lng": "Number"
   },
+  "aiGenerated": "Boolean (default: false)",
+  "travelPlans": [
+    {
+      "planName": "String (e.g., 'Classic Kashmir - 4 Days')",
+      "days": "Number",
+      "placeIds": ["ObjectId (ref: Places)"]
+    }
+  ],
   "createdAt": "Date"
 }
 ```
+*Note: `travelPlans` is populated for AI-generated destinations. Manually seeded destinations may have an empty array.*
 
 ## 3. Places Collection
 ```json
@@ -41,8 +51,13 @@ The platform utilizes a structured NoSQL approach with MongoDB (`travel_ai_db`).
   "destinationId": "ObjectId (ref: Destinations)",
   "name": "String",
   "description": "String",
-  "category": "String (e.g., 'Monument', 'Beach')",
-  "image": "String (URL)"
+  "category": "String (e.g., 'Valley', 'Lake', 'City', 'Monument')",
+  "image": "String (URL)",
+  "coordinates": {
+    "lat": "Number",
+    "lng": "Number"
+  },
+  "dayIndex": "Number (which day of the itinerary this place belongs to, 1-based)"
 }
 ```
 
@@ -51,27 +66,29 @@ The platform utilizes a structured NoSQL approach with MongoDB (`travel_ai_db`).
 {
   "_id": "ObjectId",
   "destinationId": "ObjectId (ref: Destinations)",
+  "placeId": "ObjectId (ref: Places, optional — links restaurant to a specific nearby place)",
   "name": "String",
   "cuisine": "String",
-  "priceLevel": "String (e.g., '$$', '$$$')",
+  "priceLevel": "String (enum: 'budget' | 'mid-range' | 'luxury')",
   "rating": "Number"
 }
 ```
+*Note: `placeId` is set for AI-generated entries to group restaurants near a specific place. For manually seeded destinations, `placeId` may be null.*
 
 ## 5. Property Stays Collection
 ```json
 {
   "_id": "ObjectId",
   "destinationId": "ObjectId (ref: Destinations)",
+  "placeId": "ObjectId (ref: Places, optional — links stay to a specific nearby place)",
   "name": "String",
-  "priceRange": "String",
+  "priceRange": "String (enum: 'budget' | 'mid-range' | 'luxury')",
   "rating": "Number",
-  "location": "String (Neighborhood or LatLng structure)"
+  "location": "String (Neighbourhood description)"
 }
 ```
 
 ## 6. Wishlist Collection
-Cross-reference collection allowing users to save their favorite destinations.
 ```json
 {
   "_id": "ObjectId",
@@ -80,3 +97,12 @@ Cross-reference collection allowing users to save their favorite destinations.
   "createdAt": "Date"
 }
 ```
+
+## 7. Schema Change Summary (vs Original)
+
+| Collection     | New Fields Added                                        |
+|----------------|---------------------------------------------------------|
+| Destinations   | `slug`, `aiGenerated`, `tags`, `travelPlans[]`          |
+| Places         | `coordinates {lat, lng}`, `dayIndex`                    |
+| Restaurants    | `placeId` (optional ref → Places)                       |
+| PropertyStays  | `placeId` (optional ref → Places)                       |

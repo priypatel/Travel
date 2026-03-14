@@ -1,5 +1,39 @@
 import mongoose from 'mongoose';
 
+// Embedded schemas for AI-generated travel plans
+const travelPlanPlaceRestaurantSchema = new mongoose.Schema({
+  name:       { type: String, required: true, trim: true },
+  cuisine:    { type: String, trim: true },
+  priceLevel: { type: String, enum: ['budget', 'mid-range', 'luxury'] },
+  rating:     { type: Number, min: 1, max: 5 },
+}, { _id: false });
+
+const travelPlanPlaceStaySchema = new mongoose.Schema({
+  name:       { type: String, required: true, trim: true },
+  type:       { type: String, trim: true },
+  priceLevel: { type: String, enum: ['budget', 'mid-range', 'luxury'] },
+  rating:     { type: Number, min: 1, max: 5 },
+  priceRange: { type: String, trim: true },
+}, { _id: false });
+
+const travelPlanPlaceSchema = new mongoose.Schema({
+  dayIndex:    { type: Number, required: true },
+  name:        { type: String, required: true, trim: true },
+  category:    { type: String, trim: true },
+  description: { type: String, trim: true },
+  coordinates: {
+    lat: { type: Number },
+    lng: { type: Number },
+  },
+  restaurants: [travelPlanPlaceRestaurantSchema],
+  stays:       [travelPlanPlaceStaySchema],
+}, { _id: false });
+
+const travelPlanSchema = new mongoose.Schema({
+  title:  { type: String, required: true, trim: true },
+  places: [travelPlanPlaceSchema],
+}, { _id: false });
+
 const destinationSchema = new mongoose.Schema(
   {
     name: {
@@ -9,36 +43,47 @@ const destinationSchema = new mongoose.Schema(
     },
     country: {
       type: String,
-      required: [true, 'Country is required'],
       trim: true,
+      default: '',
     },
     description: {
       type: String,
-      required: [true, 'Description is required'],
       trim: true,
+      default: '',
     },
     bestTime: {
       type: String,
-      required: [true, 'Best time to visit is required'],
       trim: true,
+      default: '',
     },
     heroImage: {
       type: String,
-      required: [true, 'Hero image URL is required'],
+      default: '',
     },
     tags: {
       type: [String],
       default: [],
     },
     coordinates: {
-      lat: { type: Number, required: [true, 'Latitude is required'] },
-      lng: { type: Number, required: [true, 'Longitude is required'] },
+      lat: { type: Number },
+      lng: { type: Number },
     },
+    // AI-generated destination fields
+    slug: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      sparse: true,
+    },
+    aiGenerated: {
+      type: Boolean,
+      default: false,
+    },
+    travelPlans: [travelPlanSchema],
   },
   { timestamps: true }
 );
 
-// Index for month filtering (RegExp on bestTime)
 destinationSchema.index({ bestTime: 1 });
 
 const Destination = mongoose.model('Destination', destinationSchema);

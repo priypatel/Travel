@@ -1,55 +1,57 @@
 # Information Architecture (IA)
 
-The application follows a straightforward navigation model built around exploration and AI recommendations.
+The application follows a navigation model built around exploration and AI-powered itinerary recommendations.
 
 ## 1. Global Navigation
-* **Navbar**: Contains Links to Home, Advanced Search, Wishlist (If logged in), and Login/Profile.
+* **Navbar**: Home, AI Search (`/ai-search`), Wishlist (logged in only), Login/Profile.
 
 ## 2. Core Pages
 
 ### 2.1 Home Page (`/`)
-* **Search Bar**: Quick text search for destinations.
-* **Month Filter**: Quick filter for best time to visit.
-* **Featured Destinations Section**: Hand-picked or highest-rated destinations.
-* **Popular Travel Locations Section**: Trending destinations grid.
+* **Month Filter**: Filter destinations by best time to visit (Jan–Dec).
+* **Destination Card Grid**: Seeded destinations → click links to `/destinations/:id`.
 
 ### 2.2 Destination Detail Page (`/destinations/:id`)
-* **Header Area**: Large hero image, Destination Name, descriptive paragraph, and "Best time to visit" badge.
-* **Top 5 Places to Visit**: Grid layout highlighting key attractions and POIs.
-* **Top 5 Restaurants**: Grid layout highlighting top-rated dining options.
-* **Top 5 Property Stays**: Grid layout highlighting accommodations.
-* **Map Section**: Full-width interactive map showing the destination and plotting the associated restaurants/places.
+* **Header**: Large hero image, Destination Name, description, "Best time to visit" badge.
+* **Top Places**: Grid of place cards (name, category, image).
+* **Top Restaurants**: Grid of restaurant cards (name, cuisine, priceLevel, rating).
+* **Where to Stay**: Grid of property stay cards (name, priceRange, rating).
+* **Map Section**: Full-width Leaflet map with colour-coded POI markers (destination, places, restaurants, stays).
 
-### 2.3 Advanced AI Search Page (`/ai-search`) [Extra Feature]
-* **Title**: "Find your perfect destination (AI Powered)"
-* **Input Form** (Formik + Yup validation): 
-  * Location (Base/Region) — required
-  * Budget Range — required, dropdown (Low/Medium/High)
-  * Travel Length (Days) — required, number, min 1
-  * Travel Style (e.g., Relaxing, Adventurous) — required
-  * Interests (e.g., Beaches, History) — required, at least 1
-* **Validation Behavior**: Inline error messages appear below invalid fields on blur and on submit. Fields with errors show a red border.
-* **Action**: "Get Recommendations" LoadingButton (shows spinner during API call).
-* **Results Block**: Displays AI chosen destination + textual reasoning.
+### 2.3 Advanced AI Search Page (`/ai-search`)
+* **Title**: "Advanced Search — AI Powered"
+* **Input Form** (Formik + Yup validation):
+  * Location (text) — required
+  * Budget Range — required, dropdown (`budget` | `mid-range` | `luxury`)
+  * Travel Length (days) — required, number, min 1
+  * Travel Style — required, dropdown
+  * Interests — required, multi-select tags
+* **Validation**: Inline errors below invalid fields on blur/submit.
+* **Action**: "Get Recommendations" LoadingButton (spinner during API call).
+* **Result Card** (appears below form after response):
+  * Destination name + country
+  * AI reason paragraph
+  * **4–5 Place preview cards** (name, category, day number)
+  * "View Full Itinerary →" button → `/ai-destination?name={slug}`
+  * "New Search" button to reset form
 
-### 2.4 Login Page (`/login`)
-* **Form** (Formik + Yup validation):
-  * Email — required, valid email format
-  * Password — required
-* **Validation Behavior**: Inline errors on blur/submit. Server errors (e.g., "Invalid email or password") shown in a red banner above the form.
-* **Action**: "Sign in" LoadingButton.
-* **Navigation**: Link to Register page.
+### 2.4 AI Destination Detail Page (`/ai-destination?name={slug}`)
+* **Header**: Gradient hero, destination name, country, description, best time badge.
+* **Two Plan Tabs**: e.g. "Classic Kashmir — 4 Days" | "Extended Kashmir — 6 Days"
+* **Per-Plan Layout** (active tab):
+  * Numbered place cards (Day 1, Day 2, …)
+  * Each place card expands or shows inline:
+    * **Restaurants near this place** — 2 options closest to user's selected budget
+    * **Stays near this place** — 2 options closest to user's selected budget
+* **Map Section**: Leaflet map with all place + restaurant + stay markers.
+* **Source badge**: shows `"AI Generated"` or `"From Database"`.
 
-### 2.5 Register Page (`/register`)
-* **Form** (Formik + Yup validation):
-  * Full name — required
-  * Email — required, valid email format
-  * Password — required, min 6 characters
-  * Confirm password — required, must match password
-* **Validation Behavior**: Inline errors on blur/submit. No role selection field rendered.
-* **Action**: "Create account" LoadingButton.
-* **Navigation**: Link to Login page.
+### 2.5 Login Page (`/login`)
+* Formik + Yup. Inline errors on blur/submit. Error banner for server errors.
+* "Sign in" LoadingButton. Link to Register.
 
-### 2.6 Wishlist Page (`/wishlist`) *(Protected Route)*
-* **List View**: Grid or list of saved destination cards.
-* **Interactions**: Click to view destination, or click "Remove" to delete from wishlist.
+### 2.6 Register Page (`/register`)
+* Formik + Yup. No role field. "Create account" LoadingButton.
+
+### 2.7 Wishlist Page (`/wishlist`) *(Protected)*
+* Grid of saved destination cards. Click to view, "Remove" to delete.

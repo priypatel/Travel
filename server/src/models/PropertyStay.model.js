@@ -8,6 +8,11 @@ const propertyStaySchema = new mongoose.Schema(
       required: [true, 'Destination ID is required'],
       index: true,
     },
+    placeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Place',
+      default: null,
+    },
     name: {
       type: String,
       required: [true, 'Property name is required'],
@@ -17,6 +22,11 @@ const propertyStaySchema = new mongoose.Schema(
       type: String,
       required: [true, 'Price range is required'],
       trim: true,
+    },
+    priceLevel: {
+      type: String,
+      enum: ['budget', 'mid-range', 'luxury'],
+      default: 'mid-range',
     },
     rating: {
       type: Number,

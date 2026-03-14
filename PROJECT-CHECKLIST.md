@@ -140,27 +140,59 @@
 
 ---
 
-## Phase 3 — AI Engine + Mapbox
+## Phase 3 — AI Engine + Redis + Smart Itinerary
 
-### Backend — AI Recommendation
+### Backend — AI Recommendation (Basic) ✅
 
-- [x] `Gemini` service (`server/src/services/gemini.service.js`) — initialise `@google/generative-ai`
-- [x] Strict prompt template (location, budget, days, travelStyle, interests → JSON response)
-- [x] `POST /api/ai/recommend` — validate 5 fields with Yup, call Gemini, return `{ recommendedDestination, reason }`
-- [x] Gemini response parsed and validated (prevent hallucinations)
-- [x] AI route wired in `app.js`
+- [x] `Gemini` service (`server/src/services/gemini.service.js`) — model `gemini-2.5-flash`
+- [x] Basic prompt template → returns `{ recommendedDestination, reason }`
+- [x] `POST /api/ai/recommend` — Yup validated 5 fields, wired in `app.js`
+- [x] Gemini response parsed and validated
 
-### Frontend — AI Search Page (`/ai-search`)
+### Backend — AI Recommendation (Enhanced) 🔲
 
-- [x] Form: location (text), budget (select: budget/mid-range/luxury), days (number), travelStyle (select), interests (multi-select or text)
+- [ ] `server/src/services/redis.service.js` — Upstash Redis `get/set/del` helpers (`@upstash/redis`)
+- [ ] `REDIS_URL` + `REDIS_TOKEN` added to `server/.env`
+- [ ] Updated `Destination` model: `slug` (unique), `aiGenerated`, `travelPlans[]`
+- [ ] Updated `Place` model: `coordinates {lat,lng}`, `dayIndex`
+- [ ] Updated `Restaurant` model: optional `placeId` ref
+- [ ] Updated `PropertyStay` model: optional `placeId` ref
+- [ ] Two-phase Gemini prompting: Phase 1 (name only) → Phase 2 (full itinerary JSON)
+- [ ] Phase 2 prompt: 2 travel plans, days-aware place count, budget-matched restaurants/stays per place
+- [ ] AI controller: Redis search cache check → Redis dest cache → MongoDB slug lookup → Gemini
+- [ ] AI-generated destination persisted to MongoDB (Destination + Places + Restaurants + Stays)
+- [ ] Cache full result in Redis (`ai:dest:{slug}` TTL 7d, `ai:search:{hash}` TTL 1d)
+- [ ] Response includes `source: "cache" | "db" | "ai"`
+- [ ] `GET /api/ai/destination/:slug` endpoint — Redis → MongoDB lookup
+- [ ] `GET /destinations/:id/places/:placeId/restaurants` — restaurants near specific place
+- [ ] `GET /destinations/:id/places/:placeId/stays` — stays near specific place
+
+### Frontend — AI Search Page (`/ai-search`) (Basic) ✅
+
+- [x] Form: location, budget (budget/mid-range/luxury), days, travelStyle, interests
 - [x] Formik + Yup validation on all 5 fields
-- [x] `LoadingButton` with spinner while AI processes
+- [x] `LoadingButton` with spinner
 - [x] Result card — destination name + reason paragraph
-- [x] Add detail page for AI search result (same as other destination detail page)
-- [x] Link from result card to `/destinations/:id` (if destination exists in DB)
 - [x] Error state if Gemini fails
 
-### Frontend — Map Integration (Destination Detail)
+### Frontend — AI Search Page (Enhanced) 🔲
+
+- [ ] Result card shows 4–5 place preview cards (day badge, name, category chip)
+- [ ] "View Full Itinerary →" button → `/ai-destination?name={slug}`
+- [ ] "New Search" button resets form and clears result
+
+### Frontend — AI Destination Detail Page (`/ai-destination`) 🔲
+
+- [ ] Fetches data from Redux state (from search) or `GET /api/ai/destination/:slug`
+- [ ] Gradient hero with destination name, country, description, best time
+- [ ] Two plan tabs (Plan 1 / Plan 2)
+- [ ] Active plan shows numbered place cards (Day 1, Day 2…)
+- [ ] Each place shows 2 restaurants (budget-matched) and 2 stays (budget-matched)
+- [ ] Map with all place/restaurant/stay markers
+- [ ] `source` badge: "AI Generated" or "From Database"
+- [ ] Loading skeleton while fetching
+
+### Frontend — Map Integration (Destination Detail) ✅
 
 - [x] Install `leaflet` + OpenStreetMap (free, no API key)
 - [x] Map renders in Destination Detail page with correct coordinates
@@ -240,10 +272,11 @@
 
 ## Progress Summary
 
-| Phase                                | Total   | Done   |
-| ------------------------------------ | ------- | ------ |
-| Phase 1 — Foundation                 | 35      | 35     |
-| Phase 2 — Core Data + Pages          | 28      | 28     |
-| Phase 3 — AI + Mapbox                | 12      | 12     |
-| Phase 4 — Wishlist + Polish + Deploy | 28      | 0      |
-| **Total**                            | **103** | **75** |
+| Phase                                     | Total   | Done   |
+| ----------------------------------------- | ------- | ------ |
+| Phase 1 — Foundation                      | 35      | 35     |
+| Phase 2 — Core Data + Pages               | 28      | 28     |
+| Phase 3 — AI Basic                        | 12      | 12     |
+| Phase 3 — AI Enhanced (Redis + Itinerary) | 17      | 0      |
+| Phase 4 — Wishlist + Polish + Deploy      | 28      | 0      |
+| **Total**                                 | **120** | **75** |

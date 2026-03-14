@@ -1,82 +1,131 @@
 # API Design Specification
 
-Base URL
-/api
+Base URL: `/api`
 
 ---
 
-Auth APIs
+## Auth APIs
 
-POST /auth/register
-POST /auth/login
-
-Request body validated via Yup schema middleware before reaching the controller.
-
----
-
-Destination APIs
-
-GET /destinations
-GET /destinations/:id
+```
+POST /auth/register    — validated by Yup schema middleware
+POST /auth/login       — validated by Yup schema middleware
+POST /auth/refresh     — issue new accessToken from refreshToken cookie
+POST /auth/logout      — clear auth cookies
+GET  /auth/me          — protected, return current user
+```
 
 ---
 
-Places APIs
+## Destination APIs
 
-GET /destinations/:id/places
-
----
-
-Restaurant APIs
-
-GET /destinations/:id/restaurants
+```
+GET /destinations              — list all, optional ?month= filter
+GET /destinations/:id          — single destination (404 if not found)
+```
 
 ---
 
-Property APIs
+## Destination Sub-Entity APIs
 
-GET /destinations/:id/stays
-
----
-
-Wishlist APIs
-
-POST /wishlist/add
-GET /wishlist
-DELETE /wishlist/:id
-
-Authentication required (verifyToken middleware)
+```
+GET /destinations/:id/places                            — all places for destination
+GET /destinations/:id/restaurants                       — all restaurants (destinationId match)
+GET /destinations/:id/stays                             — all stays (destinationId match)
+GET /destinations/:id/places/:placeId/restaurants       — restaurants near a specific place
+GET /destinations/:id/places/:placeId/stays             — stays near a specific place
+```
 
 ---
 
-AI Recommendation
+## Wishlist APIs (auth required)
 
-POST /ai/recommend
+```
+POST   /wishlist/add      — body: { destinationId }
+GET    /wishlist          — return user's saved destinations (populated)
+DELETE /wishlist/:id      — remove from wishlist
+```
 
-Request body validated via Yup schema middleware.
+---
 
-Request
+## AI Recommendation API
 
+### POST /ai/recommend
+
+**Request body** (Yup validated):
+```json
 {
- location
- budget
- days
- travelStyle
- interests
+  "location": "string (required)",
+  "budget": "string (required, enum: budget | mid-range | luxury)",
+  "days": "number (required, min: 1)",
+  "travelStyle": "string (required)",
+  "interests": ["string"]
 }
+```
 
-Response
-
+**Response body** (full destination with itinerary plans):
+```json
 {
- recommendedDestination
- reason
+  "destination": {
+    "_id": "ObjectId",
+    "name": "Kashmir",
+    "slug": "kashmir-india",
+    "country": "India",
+    "description": "...",
+    "bestTime": "March to October",
+    "heroImage": "URL",
+    "coordinates": { "lat": 34.08, "lng": 74.79 },
+    "aiGenerated": true,
+    "travelPlans": [
+      {
+        "planName": "Classic Kashmir - 4 Days",
+        "days": 4,
+        "placeIds": ["ObjectId", "ObjectId"]
+      },
+      {
+        "planName": "Extended Kashmir - 6 Days",
+        "days": 6,
+        "placeIds": ["ObjectId", "ObjectId", "ObjectId"]
+      }
+    ]
+  },
+  "plans": [
+    {
+      "planName": "Classic Kashmir - 4 Days",
+      "days": 4,
+      "places": [
+        {
+          "_id": "ObjectId",
+          "name": "Srinagar",
+          "description": "...",
+          "category": "City",
+          "coordinates": { "lat": 34.08, "lng": 74.79 },
+          "restaurants": [
+            { "name": "...", "cuisine": "...", "priceLevel": "mid-range", "rating": 4.5 },
+            { "name": "...", "cuisine": "...", "priceLevel": "budget", "rating": 4.2 }
+          ],
+          "stays": [
+            { "name": "...", "priceRange": "mid-range", "rating": 4.6, "location": "Dal Lake" },
+            { "name": "...", "priceRange": "budget", "rating": 4.0, "location": "City Centre" }
+          ]
+        }
+      ]
+    }
+  ],
+  "source": "cache | db | ai"
 }
+```
+
+---
+
+## AI Destination Lookup
+
+```
+GET /ai/destination/:slug    — return stored AI destination by slug (checks Redis → DB)
+```
 
 ---
 
 ## Standardized Error Response Format
-
-All API errors are returned in a consistent shape by the centralized `errorHandler` middleware:
 
 ```json
 {
@@ -88,9 +137,12 @@ All API errors are returned in a consistent shape by the centralized `errorHandl
 }
 ```
 
-*   **400** — Validation errors (missing/invalid fields, Yup schema failures)
-*   **401** — Unauthorized (missing or invalid JWT)
-*   **403** — Forbidden (insufficient role permissions)
-*   **404** — Resource not found
-*   **409** — Conflict (e.g., duplicate email on registration)
-*   **500** — Internal server error (unexpected failures)
+| Code | Meaning |
+|------|---------|
+| 400  | Validation errors (Yup schema failures) |
+| 401  | Unauthorized (missing or invalid JWT) |
+| 403  | Forbidden (insufficient role) |
+| 404  | Resource not found |
+| 409  | Conflict (e.g., duplicate email) |
+| 502  | AI service error (Gemini parse failure) |
+| 500  | Internal server error |

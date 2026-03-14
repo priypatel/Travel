@@ -1,11 +1,9 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Models to try in order — fallback if one has quota issues
 const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash-lite', 'gemini-2.0-flash'];
 
 async function callGemini(prompt) {
   const key = process.env.GEMINI_API_KEY;
-  console.log(`[Gemini] Using key: ${key ? key.slice(0, 8) + '...' : 'NOT SET'}`);
   const genAI = new GoogleGenerativeAI(key);
 
   let lastError;
@@ -27,68 +25,104 @@ async function callGemini(prompt) {
 }
 
 /**
- * Calls Gemini with a strict prompt and returns { recommendedDestination, reason }.
- * Tries multiple models in order until one succeeds.
+ * Phase 1: Get 3-5 destination recommendations (fast, names only).
+ * Returns array of { destinationName, country, reason, bestSeason }
  */
-export async function getRecommendation({ location, budget, days, travelStyle, interests }) {
+export async function getTopDestinations({ location, budget, days, travelStyle, interests }) {
   const interestList = Array.isArray(interests) ? interests.join(', ') : interests;
-  const locationText = location && location.trim() ? location.trim() : 'anywhere in the world';
+  const hasLocation = location && location.trim();
 
-  const prompt = `You are an expert travel planner. The user wants to travel to ${locationText}, has a ${budget} budget, for ${days} days. Their travel style is ${travelStyle}, and they are specifically interested in ${interestList}. Based on these exact constraints, select the single best global destination. You must return your response in strict JSON format containing exactly two keys: "recommendedDestination" (string, the destination name and country, e.g. "Santorini, Greece") and "reason" (string, maximum 3 sentences explaining exactly why it fits the budget, style, and interests). Do not include any other text or markdown formatting outside the JSON object.`;
+  const scope = hasLocation
+    ? `The traveller wants to explore WITHIN "${location.trim()}". Recommend 4 different specific places, cities, or sub-regions INSIDE "${location.trim()}" — do NOT go outside this region.`
+    : 'The traveller is open to anywhere in the world. Recommend 4 different well-known global destinations.';
+
+  const exampleDestinations = hasLocation
+    ? `For example, if the region is "Kashmir" suggest places like "Dal Lake, Srinagar", "Gulmarg", "Pahalgam", "Sonamarg". If "India" suggest "Kerala", "Rajasthan", "Goa", "Ladakh". If "Thailand" suggest "Bangkok", "Chiang Mai", "Phuket", "Koh Samui".`
+    : `For example, suggest "Bali, Indonesia", "Kyoto, Japan", "Santorini, Greece", "Cape Town, South Africa".`;
+
+  const prompt = `You are an expert travel planner. ${scope} Budget: ${budget}. Duration: ${days} days. Travel style: ${travelStyle}. Interests: ${interestList}.
+
+${exampleDestinations}
+
+Return ONLY a JSON array with exactly 4 items, no other text:
+[
+  {
+    "destinationName": "Specific place name (city, area, or sub-region)",
+    "country": "Sovereign country name",
+    "reason": "2 sentences on why this specific place fits the budget, travel style, and interests",
+    "bestSeason": "e.g. October to April",
+    "tags": ["tag1", "tag2", "tag3"]
+  }
+]
+Rules:
+- All 4 must be DIFFERENT places${hasLocation ? ` within or closely associated with "${location.trim()}"` : ' from different parts of the world'}
+- "country" must always be the sovereign country (e.g. "India" not "Jammu & Kashmir" or "Kashmir")
+- "destinationName" should be a specific well-known place name (e.g. "Gulmarg" not just "Kashmir")
+- No markdown, no extra text outside the JSON array`;
 
   const text = await callGemini(prompt);
   let parsed;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    throw new Error('Gemini returned non-JSON response');
-  }
-  if (!parsed.recommendedDestination || !parsed.reason) {
-    throw new Error('Gemini response missing required fields');
-  }
-  return {
-    recommendedDestination: String(parsed.recommendedDestination),
-    reason: String(parsed.reason),
-  };
+  try { parsed = JSON.parse(text); } catch { throw new Error('Gemini returned non-JSON response'); }
+  if (!Array.isArray(parsed) || parsed.length === 0) throw new Error('Gemini returned empty destinations list');
+  return parsed.map((d) => ({
+    destinationName: String(d.destinationName || ''),
+    country: String(d.country || ''),
+    reason: String(d.reason || ''),
+    bestSeason: String(d.bestSeason || ''),
+    tags: Array.isArray(d.tags) ? d.tags : [],
+  }));
 }
 
-export async function getDestinationDetails(destinationName) {
-  const prompt = `You are an expert travel guide. Generate detailed travel information for "${destinationName}". Return ONLY strict JSON with this exact structure, no other text:
+/**
+ * Phase 2: Get full itinerary for ONE destination (called on-demand from detail page).
+ * Returns { description, coordinates, plans[2] }
+ */
+export async function getFullItinerary(destinationName, budget, days) {
+  const numPlaces = Math.max(3, Math.min(days, 7));
+  const budgetLabel = budget === 'budget' ? 'budget-friendly' : budget === 'luxury' ? 'luxury' : 'mid-range';
+
+  const prompt = `You are an expert travel guide. Generate a detailed ${days}-day travel itinerary for "${destinationName}" suited for ${budgetLabel} travellers. Return ONLY strict JSON with this exact structure, no markdown:
 {
-  "description": "3-4 sentence overview of this destination covering its culture, climate, and what makes it special",
-  "coordinates": { "lat": <decimal latitude>, "lng": <decimal longitude> },
-  "places": [
-    { "name": "place name", "category": "Nature|History|Culture|Adventure|Entertainment", "description": "2 sentences about this place" },
-    { "name": "...", "category": "...", "description": "..." },
-    { "name": "...", "category": "...", "description": "..." },
-    { "name": "...", "category": "...", "description": "..." },
-    { "name": "...", "category": "...", "description": "..." }
-  ],
-  "restaurants": [
-    { "name": "restaurant name", "cuisine": "cuisine type", "rating": <4.0-5.0>, "priceLevel": "$|$$|$$$|$$$$" },
-    { "name": "...", "cuisine": "...", "rating": 0, "priceLevel": "$$" },
-    { "name": "...", "cuisine": "...", "rating": 0, "priceLevel": "$$" },
-    { "name": "...", "cuisine": "...", "rating": 0, "priceLevel": "$$" },
-    { "name": "...", "cuisine": "...", "rating": 0, "priceLevel": "$$" }
-  ],
-  "stays": [
-    { "name": "hotel name", "type": "Hotel|Resort|Hostel|Boutique", "rating": <4.0-5.0>, "priceRange": "$XX/night" },
-    { "name": "...", "type": "...", "rating": 0, "priceRange": "..." },
-    { "name": "...", "type": "...", "rating": 0, "priceRange": "..." },
-    { "name": "...", "type": "...", "rating": 0, "priceRange": "..." },
-    { "name": "...", "type": "...", "rating": 0, "priceRange": "..." }
+  "description": "3-4 sentence overview of this destination",
+  "coordinates": { "lat": <decimal>, "lng": <decimal> },
+  "plans": [
+    {
+      "title": "Classic Explorer",
+      "places": [
+        {
+          "dayIndex": 1,
+          "name": "place name",
+          "category": "Nature|History|Culture|Adventure|Beach|Market|Museum|Temple|Monument|Other",
+          "description": "2 sentences about this place",
+          "coordinates": { "lat": <decimal>, "lng": <decimal> },
+          "restaurants": [
+            { "name": "restaurant name", "cuisine": "cuisine type", "priceLevel": "${budget}", "rating": 4.5 },
+            { "name": "restaurant name 2", "cuisine": "cuisine type", "priceLevel": "${budget}", "rating": 4.3 }
+          ],
+          "stays": [
+            { "name": "stay name", "type": "Hotel|Resort|Hostel|Boutique|Guesthouse", "priceLevel": "${budget}", "rating": 4.4, "priceRange": "$XX/night" },
+            { "name": "stay name 2", "type": "Hotel|Resort|Hostel|Boutique|Guesthouse", "priceLevel": "${budget}", "rating": 4.2, "priceRange": "$XX/night" }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Hidden Gems",
+      "places": []
+    }
   ]
-}`;
+}
+Rules:
+- Plan 1 "Classic Explorer": exactly ${numPlaces} places, dayIndex 1 to ${numPlaces}
+- Plan 2 "Hidden Gems": exactly ${numPlaces} different places, dayIndex 1 to ${numPlaces}
+- Each place must have exactly 2 restaurants and 2 stays matching "${budget}" price level
+- All coordinates must be real decimal numbers for the specific location`;
 
   const text = await callGemini(prompt);
   let parsed;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    throw new Error('Gemini returned non-JSON response for destination details');
-  }
-  if (!parsed.description || !parsed.coordinates || !parsed.places || !parsed.restaurants || !parsed.stays) {
-    throw new Error('Gemini destination details response missing required fields');
+  try { parsed = JSON.parse(text); } catch { throw new Error('Gemini returned non-JSON for itinerary'); }
+  if (!parsed.description || !parsed.coordinates || !Array.isArray(parsed.plans)) {
+    throw new Error('Gemini itinerary response missing required fields');
   }
   return parsed;
 }

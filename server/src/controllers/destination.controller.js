@@ -52,7 +52,7 @@ function monthInRange(bestTime, searchMonth) {
 export const getDestinations = asyncHandler(async (req, res) => {
   const { month } = req.query;
 
-  const all = await Destination.find({}).select('-__v').sort({ createdAt: -1 });
+  const all = await Destination.find({ aiGenerated: { $ne: true } }).select('-__v').sort({ createdAt: -1 });
 
   const destinations = month
     ? all.filter((d) => monthInRange(d.bestTime, month))
@@ -74,6 +74,7 @@ export const searchDestinationByName = asyncHandler(async (req, res) => {
 
   const destination = await Destination.findOne({
     name: { $regex: name.trim(), $options: 'i' },
+    aiGenerated: { $ne: true },
   }).select('_id name country heroImage');
 
   res.status(200).json({ status: 'success', data: destination || null });
@@ -81,7 +82,10 @@ export const searchDestinationByName = asyncHandler(async (req, res) => {
 
 // GET /api/destinations/:id
 export const getDestinationById = asyncHandler(async (req, res) => {
-  const destination = await Destination.findById(req.params.id).select('-__v');
+  const destination = await Destination.findOne({
+    _id: req.params.id,
+    aiGenerated: { $ne: true },
+  }).select('-__v');
 
   if (!destination) throw new AppError('Destination not found', 404);
 
@@ -127,6 +131,32 @@ export const getDestinationStays = asyncHandler(async (req, res) => {
   if (!destination) throw new AppError('Destination not found', 404);
 
   const stays = await PropertyStay.find({ destinationId: req.params.id })
+    .select('-__v')
+    .sort({ rating: -1 });
+
+  res.status(200).json({
+    status: 'success',
+    results: stays.length,
+    data: stays,
+  });
+});
+
+// GET /api/destinations/:id/places/:placeId/restaurants
+export const getPlaceRestaurants = asyncHandler(async (req, res) => {
+  const restaurants = await Restaurant.find({ placeId: req.params.placeId })
+    .select('-__v')
+    .sort({ rating: -1 });
+
+  res.status(200).json({
+    status: 'success',
+    results: restaurants.length,
+    data: restaurants,
+  });
+});
+
+// GET /api/destinations/:id/places/:placeId/stays
+export const getPlaceStays = asyncHandler(async (req, res) => {
+  const stays = await PropertyStay.find({ placeId: req.params.placeId })
     .select('-__v')
     .sort({ rating: -1 });
 

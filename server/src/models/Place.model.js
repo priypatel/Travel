@@ -21,11 +21,22 @@ const placeSchema = new mongoose.Schema(
     category: {
       type: String,
       required: [true, 'Category is required'],
-      enum: ['Temple', 'Museum', 'Park', 'Beach', 'Market', 'Monument', 'Nature', 'Castle', 'Palace', 'Other'],
+      enum: [
+        'Temple', 'Museum', 'Park', 'Beach', 'Market', 'Monument',
+        'Nature', 'Castle', 'Palace', 'City', 'Valley', 'Lake',
+        'Waterfall', 'Cave', 'Island', 'Desert', 'Other',
+      ],
     },
     image: {
       type: String,
       required: [true, 'Image URL is required'],
+    },
+    coordinates: {
+      lat: { type: Number },
+      lng: { type: Number },
+    },
+    dayIndex: {
+      type: Number,
     },
   },
   { timestamps: true }

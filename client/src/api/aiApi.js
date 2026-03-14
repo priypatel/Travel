@@ -7,15 +7,10 @@ const API = axios.create({
 
 export const fetchAIRecommendation = async (payload) => {
   const response = await API.post('/ai/recommend', payload);
-  return response.data; // { status, data: { recommendedDestination, reason } }
+  return response.data; // { status, data: { destinations, source } }
 };
 
-export const searchDestinationByName = async (name) => {
-  const response = await API.get('/destinations/search', { params: { name } });
-  return response.data; // { status, data: destination | null }
-};
-
-export const fetchAIDestinationDetails = async (name) => {
-  const response = await API.post('/ai/destination-details', { name });
-  return response.data; // { status, data: { description, coordinates, places, restaurants, stays } }
+export const fetchAIDestinationBySlug = async (slug, params = {}) => {
+  const response = await API.get(`/ai/destination/${slug}`, { params });
+  return response.data; // { status, data: { destination, plans, source } }
 };

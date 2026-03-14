@@ -1,48 +1,95 @@
 # System Architecture
 
 ## 1. High Level Architecture Diagram
-The system relies on a modernized MERN stack integrating Google's Gemini for recommendations and Mapbox for visualizations.
 
 ```mermaid
 graph TD
     Client[Client Browser / React Frontend] -->|HTTPS REST| Backend[Node.js Express API]
-    
+    Backend -->|Cache Read/Write| Redis[Upstash Redis]
     Backend -->|Data Queries| MongoDB[(MongoDB Atlas)]
-    Backend -->|Prompt via API| Gemini[Gemini AI Recommendation API]
-    
-    Client -->|Tiles & Routing| Mapbox[Mapbox Route Service]
+    Backend -->|Prompt via API| Gemini[Gemini AI API]
+    Client -->|Tile Rendering| OSM[OpenStreetMap / Leaflet]
+    Client -->|Geocoding| Nominatim[Nominatim Geocoding API]
 ```
 
 ## 2. System Layers
 
 ### 2.1 Presentation Layer
-*   **Technologies**: React, TailwindCSS, Formik, Yup.
-*   **Role**: Renders the UI wireframes, manages client-side routing, handles JWT storage (localStorage/cookies), and provides interactive data inputs for the AI search.
-*   **Form Handling**: All forms use **Formik** for state management and **Yup** for schema-based validation. Validation runs on blur and submit, with inline error messages rendered directly below each field.
-*   **Reusable Components**: Shared `FormField` (label + input + error), `LoadingButton` (submit with spinner state), and `Toast` (notification popup) components to enforce consistency and reduce duplication.
-*   **Custom Hooks**: `useAuth` (login, register, logout, user state), `useApi` (generic fetch hook with loading/error tracking).
-*   **API Interceptors**: Axios instance with request interceptors (auto-attach JWT from localStorage) and response interceptors (global 401 handling — clear session, redirect to login).
+*   **Technologies**: React, TailwindCSS, Formik, Yup, Leaflet + OpenStreetMap.
+*   **Role**: Renders UI wireframes, manages client-side routing, handles JWT (HttpOnly cookies), provides interactive data inputs for AI search.
+*   **Form Handling**: All forms use **Formik** for state management and **Yup** for schema-based validation. Validation runs on blur and submit, inline errors below each field.
+*   **Reusable Components**: `FormField`, `LoadingButton`, `Toast`.
+*   **Custom Hooks**: `useAuth`, `useApi`.
+*   **API Interceptors**: Axios with `withCredentials: true`, response interceptor for 401 → silent token refresh.
 
 ### 2.2 Application Layer
-*   **Technologies**: Node.js, Express.
-*   **Role**: Provides the RESTful APIs defining Auth, Destinations, Places, Restaurants, Property Stays, and Wishlist interactions. Acts as a secure middleman for external API calls to Gemini. Handles Role-Based Access Control (RBAC) ensuring newly registered accounts default to "user".
-*   **Error Handling**: A centralized **global error-handling middleware** (`errorHandler`) is registered as the last middleware in the Express chain. A custom **`AppError`** class (extending `Error`) carries `statusCode` and `isOperational` properties. An **`asyncHandler`** higher-order function wraps every async controller, catching rejected promises and forwarding errors to the global handler. Controllers never use raw `try/catch`.
-*   **Request Validation**: A reusable `validate` middleware accepts a Yup schema and validates `req.body` before the request reaches the controller, returning a standardized 400 error with field-level details on failure.
+*   **Technologies**: Node.js, Express, Upstash Redis (`@upstash/redis`).
+*   **Role**: RESTful APIs for Auth, Destinations, AI Recommendations, Wishlist. Acts as secure middleman for Gemini calls. Caches AI responses in Redis. Persists AI-generated destinations to MongoDB.
+*   **Cache Strategy**:
+    - Check `ai:search:{hash}` → check `ai:dest:{slug}` → check MongoDB → call Gemini → save to DB + cache
+*   **Error Handling**: `AppError` class, `asyncHandler` wrapper, global `errorHandler` middleware, `validate` middleware.
 
 ### 2.3 Data Layer
-*   **Technologies**: MongoDB (Atlas).
-*   **Role**: Persistent storage using relational-style ID references across multiple collections (Users, Destinations, Places, Restaurants, Stays, Wishlists).
+*   **Technologies**: MongoDB Atlas.
+*   **Role**: Persistent storage. Collections: Users, Destinations, Places, Restaurants, Stays, Wishlists.
+*   **New fields vs original schema**:
+    - `Destination`: `slug`, `aiGenerated`, `travelPlans[]`
+    - `Place`: `coordinates {lat, lng}`, `dayIndex`
+    - `Restaurant`: optional `placeId` ref
+    - `PropertyStay`: optional `placeId` ref
 
-### 2.4 AI Layer
-*   **Technologies**: Gemini AI recommendation engine.
-*   **Role**: Processes structured contextual prompts built dynamically by the Application sequence, returning calculated destination matching based on multi-variable inputs (budget, style, length, etc.).
+### 2.4 Cache Layer (New)
+*   **Technology**: Upstash Redis (serverless, free tier, REST-based — no local Redis needed).
+*   **Role**: Caches AI-generated destination data to prevent repeated Gemini API calls.
+*   **Keys**:
+    - `ai:dest:{slug}` — full destination + plans JSON (TTL: 7 days)
+    - `ai:search:{sha256-of-params}` — destination slug (TTL: 1 day)
 
-### 2.5 Map Layer
-*   **Technologies**: Mapbox GL JS / Mapbox APIs.
-*   **Role**: Renders the interactive canvas on the Destination Detail page to plot coordinates of Stays, Places, and Restaurants.
+### 2.5 AI Layer
+*   **Technology**: Gemini 2.5 Flash.
+*   **Role**: Two-phase prompting:
+    1. Quick prompt → destination name only
+    2. Full prompt → complete itinerary JSON (only when not in cache/DB)
+*   **Output structure**: destination metadata + 2 travel plans + places per day + 2 budget-matched restaurants/stays per place.
+
+### 2.6 Map Layer
+*   **Technology**: Leaflet + OpenStreetMap (free, no API key required).
+*   **Role**: Renders interactive map on Destination Detail page. Plots:
+    - Main destination pin (indigo, large)
+    - Place markers (green)
+    - Restaurant markers (cyan)
+    - Stay markers (purple)
+*   **Geocoding**: Nominatim API for POI coordinates; fallback scatter if not found.
 
 ## 3. Data Flow
-1. **User Request**: User fills a Formik form (e.g., login, search) → Yup validates client-side → Axios sends HTTP request with JWT via interceptor.
-2. **Backend Processing**: Express receives request → `validate` middleware checks request body → `asyncHandler` wraps controller → Controller processes logic or throws `AppError`.
-3. **Data/AI Resolution**: If static data, controller queries MongoDB. If AI recommendation, controller builds prompt and queries Gemini.
-4. **Response**: Success → JSON response returned to client. Failure → `errorHandler` middleware formats a standardized error response (`{ status, message, errors }`).
+
+### Standard Destination Browse
+1. User → Home Page → clicks Destination Card
+2. React fetches `GET /destinations/:id` + sub-entities
+3. Backend queries MongoDB → returns data
+4. Frontend renders detail page with Leaflet map + POI markers
+
+### AI Search Flow
+1. User fills Formik form → Yup validates → Axios POST `/ai/recommend`
+2. Backend hashes params → checks Redis (`ai:search:{hash}`)
+3. Cache miss → quick Gemini call for destination name → normalize to slug
+4. Check Redis (`ai:dest:{slug}`) → check MongoDB
+5. Cache/DB miss → full Gemini prompt → parse JSON → save to MongoDB → cache in Redis
+6. Return full destination + plans to frontend
+7. Frontend shows 4-5 place cards on AI Search page
+8. User clicks "View Itinerary" → `/ai-destination?name={slug}`
+9. AI Detail page shows 2 plan tabs, each with places → restaurants + stays per place
+
+## 4. Error Handling Strategy
+
+### Frontend
+- Yup validates all form inputs before submission
+- Axios response interceptors catch 401s → silent token refresh → retry
+- Toast component displays server error messages
+
+### Backend
+- `AppError` class carries `statusCode` and `isOperational` flag
+- `asyncHandler` wraps all controllers — no try/catch boilerplate
+- `validate` middleware rejects invalid bodies with field-level errors
+- Global `errorHandler` formats all errors consistently
+- Gemini parse failures throw `AppError(502)`

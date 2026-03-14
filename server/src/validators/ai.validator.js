@@ -7,7 +7,7 @@ export const aiRecommendSchema = yup.object({
     .default('anywhere'),
   budget: yup
     .string()
-    .oneOf(['Low', 'Medium', 'High'], 'Budget must be Low, Medium, or High')
+    .oneOf(['budget', 'mid-range', 'luxury'], 'Budget must be budget, mid-range, or luxury')
     .required('Budget is required'),
   days: yup
     .number()

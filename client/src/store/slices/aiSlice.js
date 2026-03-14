@@ -1,19 +1,13 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { fetchAIRecommendation, searchDestinationByName, fetchAIDestinationDetails } from '../../api/aiApi';
+import { fetchAIRecommendation, fetchAIDestinationBySlug } from '../../api/aiApi';
 
-// Gets AI recommendation then immediately looks up the destination in DB
+// POST /ai/recommend → { destinations: [...], source }
 export const getAIRecommendation = createAsyncThunk(
   'ai/recommend',
   async (payload, { rejectWithValue }) => {
     try {
-      const aiRes = await fetchAIRecommendation(payload);
-      const { recommendedDestination, reason } = aiRes.data;
-
-      // Try to find a matching destination in DB for the detail page link
-      const searchRes = await searchDestinationByName(recommendedDestination.split(',')[0].trim());
-      const matchedDestination = searchRes.data || null;
-
-      return { recommendedDestination, reason, matchedDestination };
+      const res = await fetchAIRecommendation(payload);
+      return res.data; // { destinations, source }
     } catch (err) {
       return rejectWithValue(
         err.response?.data?.message || 'AI recommendation failed. Please try again.'
@@ -22,12 +16,13 @@ export const getAIRecommendation = createAsyncThunk(
   }
 );
 
-export const getAIDestinationDetails = createAsyncThunk(
-  'ai/destinationDetails',
-  async (name, { rejectWithValue }) => {
+// GET /ai/destination/:slug → { destination, plans, source }
+export const getAIDestinationBySlug = createAsyncThunk(
+  'ai/destinationBySlug',
+  async ({ slug, budget, days, name }, { rejectWithValue }) => {
     try {
-      const res = await fetchAIDestinationDetails(name);
-      return { name, ...res.data };
+      const res = await fetchAIDestinationBySlug(slug, { budget, days, name });
+      return res.data;
     } catch (err) {
       return rejectWithValue(
         err.response?.data?.message || 'Failed to load destination details.'
@@ -39,16 +34,18 @@ export const getAIDestinationDetails = createAsyncThunk(
 const aiSlice = createSlice({
   name: 'ai',
   initialState: {
-    result: null,             // { recommendedDestination, reason, matchedDestination }
+    destinations: [],    // [{ destinationName, country, reason, bestSeason, tags, slug }]
+    source: null,
     loading: false,
     error: null,
-    destinationDetail: null,  // { name, description, coordinates, places, restaurants, stays }
+    destinationDetail: null, // { destination, plans, source }
     detailLoading: false,
     detailError: null,
   },
   reducers: {
     clearAIResult(state) {
-      state.result = null;
+      state.destinations = [];
+      state.source = null;
       state.error = null;
     },
     clearAIDetail(state) {
@@ -61,26 +58,27 @@ const aiSlice = createSlice({
       .addCase(getAIRecommendation.pending, (state) => {
         state.loading = true;
         state.error = null;
-        state.result = null;
+        state.destinations = [];
       })
       .addCase(getAIRecommendation.fulfilled, (state, action) => {
         state.loading = false;
-        state.result = action.payload;
+        state.destinations = action.payload.destinations || [];
+        state.source = action.payload.source;
       })
       .addCase(getAIRecommendation.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
-      .addCase(getAIDestinationDetails.pending, (state) => {
+      .addCase(getAIDestinationBySlug.pending, (state) => {
         state.detailLoading = true;
         state.detailError = null;
         state.destinationDetail = null;
       })
-      .addCase(getAIDestinationDetails.fulfilled, (state, action) => {
+      .addCase(getAIDestinationBySlug.fulfilled, (state, action) => {
         state.detailLoading = false;
         state.destinationDetail = action.payload;
       })
-      .addCase(getAIDestinationDetails.rejected, (state, action) => {
+      .addCase(getAIDestinationBySlug.rejected, (state, action) => {
         state.detailLoading = false;
         state.detailError = action.payload;
       });
