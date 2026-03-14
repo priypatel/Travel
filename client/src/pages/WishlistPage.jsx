@@ -8,8 +8,8 @@ function WishlistCard({ destination }) {
   const { _id, name, country, description, bestTime, heroImage, tags, aiGenerated, slug } = destination;
   const badge = tags?.[0] || null;
   const detailPath = aiGenerated
-    ? `/ai-destination?slug=${slug}&name=${encodeURIComponent(name)}`
-    : `/destinations/${_id}`;
+    ? `/ai-destination?slug=${slug}&name=${encodeURIComponent(name)}&from=wishlist`
+    : `/destinations/${_id}?from=wishlist`;
 
   return (
     <div className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col">

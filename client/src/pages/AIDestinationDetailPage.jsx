@@ -222,10 +222,11 @@ function DestinationMap({ lat, lng, name, places = [] }) {
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function AIDestinationDetailPage() {
   const [searchParams] = useSearchParams();
-  const slug     = searchParams.get('slug') || '';
-  const budget   = searchParams.get('budget') || 'mid-range';
-  const days     = searchParams.get('days') || '5';
-  const name     = searchParams.get('name') || '';
+  const slug        = searchParams.get('slug') || '';
+  const budget      = searchParams.get('budget') || 'mid-range';
+  const days        = searchParams.get('days') || '5';
+  const name        = searchParams.get('name') || '';
+  const fromWishlist = searchParams.get('from') === 'wishlist';
   const dispatch = useDispatch();
   const { destinationDetail, detailLoading, detailError } = useSelector((state) => state.ai);
   const [activeTab, setActiveTab] = useState(0);
@@ -258,8 +259,8 @@ export default function AIDestinationDetailPage() {
           <h2 className="text-2xl font-bold text-[#0F172A] mb-2">
             {detailError || 'Could not load destination details'}
           </h2>
-          <Link to="/ai-search" className="text-indigo-600 text-sm hover:underline">
-            ← Back to AI Search
+          <Link to={fromWishlist ? '/wishlist' : '/ai-search'} className="text-indigo-600 text-sm hover:underline">
+            {fromWishlist ? '← Back to Wishlist' : '← Back to AI Search'}
           </Link>
         </div>
       </div>
@@ -276,13 +277,13 @@ export default function AIDestinationDetailPage() {
         <div className="absolute inset-0 bg-[#0F172A]/30" />
         <div className="relative z-10 max-w-[1200px] mx-auto px-6 pb-10 w-full">
           <Link
-            to="/ai-search"
+            to={fromWishlist ? '/wishlist' : '/ai-search'}
             className="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-4 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Back to AI Search
+            {fromWishlist ? 'Back to Wishlist' : 'Back to AI Search'}
           </Link>
           <div>
             <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full mb-3">

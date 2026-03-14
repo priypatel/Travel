@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -262,6 +262,8 @@ function DestinationMap({ lat, lng, name, places = [], restaurants = [], stays =
 // ── Page ───────────────────────────────────────────────────────────────────────
 export default function DestinationDetailPage() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const fromWishlist = searchParams.get('from') === 'wishlist';
   const dispatch = useDispatch();
   const { detail, places, restaurants, stays, loading, error } = useSelector(
     (state) => state.destinations
@@ -292,7 +294,9 @@ export default function DestinationDetailPage() {
           <h2 className="text-2xl font-bold text-[#0F172A] mb-2">
             {error || 'Destination not found'}
           </h2>
-          <Link to="/" className="text-indigo-600 text-sm hover:underline">← Back to destinations</Link>
+          <Link to={fromWishlist ? '/wishlist' : '/'} className="text-indigo-600 text-sm hover:underline">
+            {fromWishlist ? '← Back to Wishlist' : '← Back to destinations'}
+          </Link>
         </div>
       </div>
     );
@@ -314,13 +318,13 @@ export default function DestinationDetailPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A]/80 via-[#0F172A]/20 to-transparent" />
         <div className="relative z-10 max-w-[1200px] mx-auto px-6 pb-10 w-full">
           <Link
-            to="/"
+            to={fromWishlist ? '/wishlist' : '/'}
             className="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-4 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            All destinations
+            {fromWishlist ? 'Back to Wishlist' : 'All destinations'}
           </Link>
           <div className="flex flex-wrap items-end gap-4">
             <div className="flex-1">
