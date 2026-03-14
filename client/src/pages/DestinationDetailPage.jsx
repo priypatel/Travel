@@ -1,114 +1,164 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { getDestinationDetail, clearDetail } from '../store/slices/destinationSlice';
 
-// ─── Sub-cards ────────────────────────────────────────────────────────────────
+// ── Category config ────────────────────────────────────────────────────────────
+const CATEGORY_COLORS = {
+  Nature:    { bg: 'bg-emerald-50', text: 'text-emerald-600', icon: '🌿' },
+  History:   { bg: 'bg-amber-50',   text: 'text-amber-600',   icon: '🏛' },
+  Culture:   { bg: 'bg-purple-50',  text: 'text-purple-600',  icon: '🎭' },
+  Adventure: { bg: 'bg-orange-50',  text: 'text-orange-600',  icon: '⛰' },
+  Beach:     { bg: 'bg-cyan-50',    text: 'text-cyan-600',    icon: '🏖' },
+  Museum:    { bg: 'bg-indigo-50',  text: 'text-indigo-600',  icon: '🖼' },
+  Temple:    { bg: 'bg-rose-50',    text: 'text-rose-600',    icon: '⛩' },
+  Market:    { bg: 'bg-yellow-50',  text: 'text-yellow-600',  icon: '🛒' },
+  Monument:  { bg: 'bg-slate-50',   text: 'text-slate-600',   icon: '🗽' },
+  Park:      { bg: 'bg-green-50',   text: 'text-green-600',   icon: '🌳' },
+  Castle:    { bg: 'bg-stone-50',   text: 'text-stone-600',   icon: '🏰' },
+  Palace:    { bg: 'bg-pink-50',    text: 'text-pink-600',    icon: '🏯' },
+};
 
-function PlaceCard({ place }) {
-  return (
-    <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-      <img
-        src={place.image}
-        alt={place.name}
-        className="w-full h-40 object-cover"
-        loading="lazy"
-      />
-      <div className="p-3">
-        <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-          {place.category}
-        </span>
-        <h4 className="text-sm font-bold text-[#0F172A] mt-2 mb-1">{place.name}</h4>
-        <p className="text-xs text-gray-500 line-clamp-2">{place.description}</p>
-      </div>
-    </div>
-  );
+const PRICE_BADGE = {
+  '$':         { label: '$',   cls: 'bg-green-100 text-green-700' },
+  '$$':        { label: '$$',  cls: 'bg-yellow-100 text-yellow-700' },
+  '$$$':       { label: '$$$', cls: 'bg-purple-100 text-purple-700' },
+  budget:      { label: '$',   cls: 'bg-green-100 text-green-700' },
+  'mid-range': { label: '$$',  cls: 'bg-yellow-100 text-yellow-700' },
+  luxury:      { label: '$$$', cls: 'bg-purple-100 text-purple-700' },
+};
+
+// ── Distribute items across buckets (3 per bucket, wrap-around) ───────────────
+function distribute(items, numBuckets, perBucket = 3) {
+  const buckets = Array.from({ length: numBuckets }, () => []);
+  items.forEach((item, i) => {
+    const bucket = Math.floor(i / perBucket) % numBuckets;
+    if (buckets[bucket].length < perBucket) buckets[bucket].push(item);
+  });
+  // If some buckets are still empty (not enough items), repeat items
+  const pool = [...items];
+  for (let b = 0; b < numBuckets; b++) {
+    while (buckets[b].length < Math.min(perBucket, items.length)) {
+      buckets[b].push(pool[buckets[b].length % pool.length]);
+    }
+  }
+  return buckets;
 }
 
-function RestaurantCard({ restaurant }) {
-  const stars = Math.round(restaurant.rating);
+// ── Mini cards ─────────────────────────────────────────────────────────────────
+function RestaurantMini({ r }) {
+  const price = PRICE_BADGE[r.priceLevel] || PRICE_BADGE['$$'];
   return (
-    <div className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow flex gap-3">
-      <div className="w-10 h-10 rounded-lg bg-cyan-50 flex items-center justify-center shrink-0">
-        <svg className="w-5 h-5 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-        </svg>
-      </div>
+    <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-2.5">
+      <span className="text-base shrink-0">🍽</span>
       <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-1">
-          <h4 className="text-sm font-bold text-[#0F172A] leading-tight">{restaurant.name}</h4>
-          <span className="text-xs text-gray-400 shrink-0">{restaurant.priceLevel}</span>
+        <div className="flex items-center justify-between gap-1">
+          <p className="text-xs font-semibold text-[#0F172A] truncate">{r.name}</p>
+          <span className={`text-xs font-bold px-1.5 py-0.5 rounded shrink-0 ${price.cls}`}>{price.label}</span>
         </div>
-        <p className="text-xs text-gray-500 mb-1">{restaurant.cuisine}</p>
-        <div className="flex items-center gap-0.5">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <svg
-              key={i}
-              className={`w-3 h-3 ${i < stars ? 'text-amber-400' : 'text-gray-200'}`}
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-            </svg>
-          ))}
-          <span className="text-xs text-gray-400 ml-1">{restaurant.rating}</span>
-        </div>
+        <p className="text-xs text-gray-400">{r.cuisine}</p>
+        {r.rating > 0 && (
+          <div className="flex items-center gap-0.5 mt-0.5">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <svg key={i} className={`w-2.5 h-2.5 ${i < Math.round(r.rating) ? 'text-amber-400' : 'text-gray-200'}`}
+                fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+              </svg>
+            ))}
+            <span className="text-xs text-gray-400 ml-0.5">{r.rating}</span>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function StayCard({ stay }) {
-  const stars = Math.round(stay.rating);
+function StayMini({ s }) {
+  const price = PRICE_BADGE[s.priceLevel] || PRICE_BADGE['$$'];
   return (
-    <div className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow flex gap-3">
-      <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-        <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-        </svg>
-      </div>
+    <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-2.5">
+      <span className="text-base shrink-0">🏨</span>
       <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-1">
-          <h4 className="text-sm font-bold text-[#0F172A] leading-tight">{stay.name}</h4>
-          <span className="text-xs text-gray-400 shrink-0">{stay.priceRange}</span>
+        <div className="flex items-center justify-between gap-1">
+          <p className="text-xs font-semibold text-[#0F172A] truncate">{s.name}</p>
+          <span className={`text-xs font-bold px-1.5 py-0.5 rounded shrink-0 ${price.cls}`}>{price.label}</span>
         </div>
-        <p className="text-xs text-gray-500 mb-1">{stay.location}</p>
-        <div className="flex items-center gap-0.5">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <svg
-              key={i}
-              className={`w-3 h-3 ${i < stars ? 'text-amber-400' : 'text-gray-200'}`}
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-            </svg>
-          ))}
-          <span className="text-xs text-gray-400 ml-1">{stay.rating}</span>
-        </div>
+        <p className="text-xs text-gray-400">
+          {[s.priceRange, s.type].filter(Boolean).join(' · ')}
+        </p>
+        {s.rating > 0 && (
+          <div className="flex items-center gap-0.5 mt-0.5">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <svg key={i} className={`w-2.5 h-2.5 ${i < Math.round(s.rating) ? 'text-amber-400' : 'text-gray-200'}`}
+                fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+              </svg>
+            ))}
+            <span className="text-xs text-gray-400 ml-0.5">{s.rating}</span>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-// ─── Section wrapper ──────────────────────────────────────────────────────────
-function Section({ title, icon, children }) {
+// ── Day place card ─────────────────────────────────────────────────────────────
+function DayPlaceCard({ place, dayNumber, placedRestaurants, placedStays }) {
+  const colors = CATEGORY_COLORS[place.category] || { bg: 'bg-indigo-50', text: 'text-indigo-600', icon: '📍' };
   return (
-    <div className="mb-12">
-      <div className="flex items-center gap-2 mb-6">
-        <span className="text-xl">{icon}</span>
-        <h2 className="text-xl font-bold text-[#0F172A]">{title}</h2>
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      {/* Place header */}
+      <div className={`${colors.bg} px-5 py-4 flex items-start gap-4`}>
+        <div className="w-10 h-10 rounded-xl bg-white/70 flex items-center justify-center text-xl shrink-0">
+          {colors.icon}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-bold text-white bg-[#4F46E5] px-2 py-0.5 rounded-full">
+              Day {dayNumber}
+            </span>
+            <span className={`text-xs font-medium ${colors.text}`}>{place.category}</span>
+          </div>
+          <h3 className="text-base font-bold text-[#0F172A] leading-tight">{place.name}</h3>
+          <p className="text-sm text-gray-500 mt-1 line-clamp-2">{place.description}</p>
+        </div>
+        {place.image && (
+          <img
+            src={place.image}
+            alt={place.name}
+            className="w-20 h-20 rounded-xl object-cover shrink-0 hidden sm:block"
+          />
+        )}
       </div>
-      {children}
+
+      {/* Restaurants + Stays */}
+      {(placedRestaurants.length > 0 || placedStays.length > 0) && (
+        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          {placedRestaurants.length > 0 && (
+            <div>
+              <p className="text-xs font-bold text-[#6B7280] uppercase tracking-wider mb-2">Where to Eat</p>
+              <div className="space-y-2">
+                {placedRestaurants.map((r) => <RestaurantMini key={r._id} r={r} />)}
+              </div>
+            </div>
+          )}
+          {placedStays.length > 0 && (
+            <div>
+              <p className="text-xs font-bold text-[#6B7280] uppercase tracking-wider mb-2">Where to Stay</p>
+              <div className="space-y-2">
+                {placedStays.map((s) => <StayMini key={s._id} s={s} />)}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-// ─── Map with POI markers ─────────────────────────────────────────────────────
+// ── Map ────────────────────────────────────────────────────────────────────────
 function makeDotIcon(color, size = 14) {
   return L.divIcon({
     html: `<div style="width:${size}px;height:${size}px;background:${color};border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px ${color};"></div>`,
@@ -119,16 +169,18 @@ function makeDotIcon(color, size = 14) {
 }
 
 const POI_COLORS = {
-  place:      '#16A34A',  // green
-  restaurant: '#06B6D4',  // cyan
-  stay:       '#7C3AED',  // purple
-  destination:'#4F46E5',  // indigo (main)
+  place:       '#16A34A',
+  restaurant:  '#06B6D4',
+  stay:        '#7C3AED',
+  destination: '#4F46E5',
 };
 
 async function geocode(query) {
   try {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
-    const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
+      { headers: { 'Accept-Language': 'en' } }
+    );
     const data = await res.json();
     if (data.length > 0) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
   } catch { /* fall through */ }
@@ -136,7 +188,6 @@ async function geocode(query) {
 }
 
 function scatter(lat, lng, index) {
-  // Deterministic small offset so markers don't all stack on center
   const angle = (index * 137.5 * Math.PI) / 180;
   const radius = 0.01 + (index % 3) * 0.007;
   return { lat: lat + Math.cos(angle) * radius, lng: lng + Math.sin(angle) * radius };
@@ -150,18 +201,15 @@ function DestinationMap({ lat, lng, name, places = [], restaurants = [], stays =
     if (!containerRef.current || mapRef.current) return;
 
     mapRef.current = L.map(containerRef.current).setView([lat, lng], 13);
-
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(mapRef.current);
 
-    // Main destination pin (larger)
     L.marker([lat, lng], { icon: makeDotIcon(POI_COLORS.destination, 18) })
       .addTo(mapRef.current)
       .bindPopup(`<b>${name}</b>`)
       .openPopup();
 
-    // Add POI markers with geocoding + fallback scatter
     const pois = [
       ...places.map((p, i)      => ({ name: p.name, type: 'Place',      color: POI_COLORS.place,      index: i })),
       ...restaurants.map((r, i) => ({ name: r.name, type: 'Restaurant', color: POI_COLORS.restaurant, index: places.length + i })),
@@ -172,12 +220,9 @@ function DestinationMap({ lat, lng, name, places = [], restaurants = [], stays =
     (async () => {
       for (const poi of pois) {
         if (cancelled || !mapRef.current) break;
-        await new Promise(r => setTimeout(r, 120)); // respect Nominatim 1 req/s limit
+        await new Promise(r => setTimeout(r, 120));
         if (cancelled || !mapRef.current) break;
-
-        const coords = await geocode(`${poi.name}, ${name}`)
-          ?? scatter(lat, lng, poi.index);
-
+        const coords = await geocode(`${poi.name}, ${name}`) ?? scatter(lat, lng, poi.index);
         if (!cancelled && mapRef.current) {
           L.marker([coords.lat, coords.lng], { icon: makeDotIcon(poi.color) })
             .addTo(mapRef.current)
@@ -196,7 +241,6 @@ function DestinationMap({ lat, lng, name, places = [], restaurants = [], stays =
   return (
     <div>
       <div ref={containerRef} className="w-full h-72 rounded-2xl overflow-hidden" />
-      {/* Legend */}
       <div className="flex flex-wrap gap-4 mt-3 px-1 text-xs text-gray-500">
         {[
           { color: POI_COLORS.destination, label: 'Destination' },
@@ -214,7 +258,7 @@ function DestinationMap({ lat, lng, name, places = [], restaurants = [], stays =
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ── Page ───────────────────────────────────────────────────────────────────────
 export default function DestinationDetailPage() {
   const { id } = useParams();
   const dispatch = useDispatch();
@@ -227,7 +271,6 @@ export default function DestinationDetailPage() {
     return () => dispatch(clearDetail());
   }, [dispatch, id]);
 
-  // Loading skeleton
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F8FAFC]">
@@ -241,7 +284,6 @@ export default function DestinationDetailPage() {
     );
   }
 
-  // Error state
   if (error || !detail) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
@@ -249,17 +291,19 @@ export default function DestinationDetailPage() {
           <h2 className="text-2xl font-bold text-[#0F172A] mb-2">
             {error || 'Destination not found'}
           </h2>
-          <Link to="/" className="text-indigo-600 text-sm hover:underline">
-            ← Back to destinations
-          </Link>
+          <Link to="/" className="text-indigo-600 text-sm hover:underline">← Back to destinations</Link>
         </div>
       </div>
     );
   }
 
+  // Distribute restaurants and stays across places (3 each per place)
+  const restBuckets  = places.length > 0 ? distribute(restaurants, places.length, 3) : [];
+  const stayBuckets  = places.length > 0 ? distribute(stays, places.length, 3) : [];
+
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      {/* ── Hero ─────────────────────────────────────────────── */}
+      {/* Hero */}
       <section className="relative h-[60vh] flex items-end overflow-hidden">
         <img
           src={detail.heroImage}
@@ -267,7 +311,6 @@ export default function DestinationDetailPage() {
           className="absolute inset-0 w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A]/80 via-[#0F172A]/20 to-transparent" />
-
         <div className="relative z-10 max-w-[1200px] mx-auto px-6 pb-10 w-full">
           <Link
             to="/"
@@ -284,9 +327,11 @@ export default function DestinationDetailPage() {
               <p className="text-white/80 mt-1 text-lg">{detail.country}</p>
             </div>
             <div className="flex flex-wrap gap-2 mb-1">
-              <span className="bg-white/20 backdrop-blur-sm text-white text-sm px-3 py-1 rounded-full">
-                🗓 Best: {detail.bestTime}
-              </span>
+              {detail.bestTime && (
+                <span className="bg-white/20 backdrop-blur-sm text-white text-sm px-3 py-1 rounded-full">
+                  🗓 Best: {detail.bestTime}
+                </span>
+              )}
               {detail.tags?.map((tag) => (
                 <span key={tag} className="bg-indigo-600/80 backdrop-blur-sm text-white text-sm px-3 py-1 rounded-full">
                   {tag}
@@ -297,7 +342,7 @@ export default function DestinationDetailPage() {
         </div>
       </section>
 
-      {/* ── Content ──────────────────────────────────────────── */}
+      {/* Content */}
       <div className="max-w-[1200px] mx-auto px-6 py-10">
         {/* Overview */}
         <div className="bg-white rounded-2xl p-6 shadow-sm mb-10">
@@ -319,44 +364,30 @@ export default function DestinationDetailPage() {
           </div>
         )}
 
-        {/* Places */}
-        <Section title="Top Places to Visit" icon="🏛">
-          {places.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-              {places.map((place) => (
-                <PlaceCard key={place._id} place={place} />
-              ))}
+        {/* Day-by-day itinerary */}
+        {places.length > 0 ? (
+          <div className="space-y-5">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xl">🗺</span>
+              <h2 className="text-xl font-bold text-[#0F172A]">
+                Day-by-Day Itinerary · {places.length} Places
+              </h2>
             </div>
-          ) : (
-            <p className="text-sm text-gray-400">No places listed yet.</p>
-          )}
-        </Section>
-
-        {/* Restaurants */}
-        <Section title="Top Restaurants" icon="🍽">
-          {restaurants.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {restaurants.map((r) => (
-                <RestaurantCard key={r._id} restaurant={r} />
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-gray-400">No restaurants listed yet.</p>
-          )}
-        </Section>
-
-        {/* Stays */}
-        <Section title="Where to Stay" icon="🏨">
-          {stays.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {stays.map((s) => (
-                <StayCard key={s._id} stay={s} />
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-gray-400">No stays listed yet.</p>
-          )}
-        </Section>
+            {places.map((place, i) => (
+              <DayPlaceCard
+                key={place._id}
+                place={place}
+                dayNumber={i + 1}
+                placedRestaurants={restBuckets[i] || []}
+                placedStays={stayBuckets[i] || []}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl p-8 text-center shadow-sm">
+            <p className="text-gray-400 text-sm">No itinerary available for this destination.</p>
+          </div>
+        )}
       </div>
     </div>
   );
