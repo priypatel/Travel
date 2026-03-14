@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useFormik } from 'formik';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { login, clearError } from '../store/slices/authSlice';
 import { loginSchema } from '../validators/auth.validator';
 import FormField from '../components/FormField';
@@ -9,6 +9,8 @@ import FormField from '../components/FormField';
 export default function LoginPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '/';
   const { loading, error, user } = useSelector((state) => state.auth);
 
   useEffect(() => {
@@ -16,8 +18,8 @@ export default function LoginPage() {
   }, [dispatch]);
 
   useEffect(() => {
-    if (user) navigate('/');
-  }, [user, navigate]);
+    if (user) navigate(redirectTo, { replace: true });
+  }, [user, navigate, redirectTo]);
 
   const formik = useFormik({
     initialValues: { email: '', password: '' },

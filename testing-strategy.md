@@ -1,56 +1,73 @@
 # Testing Strategy
 
 ## 1. Scope
-The testing approach must cover custom logic, relational database fetching, secured routes, the integration points for AI and mapping, centralized error handling, and form validation.
+Covers custom logic, relational DB fetching, secured routes, AI integration, Redis caching, map, error handling, and form validation.
 
 ## 2. Testing Frameworks
-*   **Backend**: Jest + Supertest (API behavior and mocked DB calls).
-*   **Frontend**: React Testing Library + Jest (Component rendering, Context hooks).
-*   **E2E (End-to-End)**: Cypress (Simulating full user journeys).
+*   **Backend**: Jest + Supertest.
+*   **Frontend**: React Testing Library + Jest.
+*   **E2E**: Cypress.
 
 ## 3. High-Priority Backend Tests
-### 3.1 Authentication & Security (`auth`, `wishlist`, `rbac`)
-*   Ensure `/auth/register` explicitly strips any `role` parameter sent by a malicious client and firmly defaults the new account to `role="user"`.
-*   Ensure `/wishlist/add` immediately rejects requests lacking a valid, unexpired Authorization Bearer token (returns 401/403).
-*   Ensure tokens properly decode to a valid `userId` reference and role.
+
+### 3.1 Authentication & Security
+*   `/auth/register` strips `role` from body, defaults to `"user"`.
+*   `/wishlist/add` rejects requests without valid auth cookie (401).
+*   Tokens decode to valid `userId` and `role`.
 
 ### 3.2 Centralized Error Handling
-*   Ensure the `asyncHandler` properly catches rejected promises and forwards errors to `errorHandler`.
-*   Ensure `AppError` instances produce the correct `statusCode` and `message` in the response.
-*   Ensure the `validate` middleware returns 400 with field-level error details when `req.body` fails Yup schema validation.
-*   Ensure unknown/unexpected errors return a generic 500 response without leaking stack traces or internal details.
+*   `asyncHandler` catches rejected promises and forwards to `errorHandler`.
+*   `AppError` instances produce correct `statusCode` and `message`.
+*   `validate` middleware returns 400 with field-level errors on Yup failure.
+*   Unknown errors return generic 500 without leaking stack traces.
 
 ### 3.3 Request Validation (Yup Schemas)
-*   Ensure `/auth/register` rejects missing `name`, `email`, or `password` with a 400 and field-specific error messages.
-*   Ensure `/auth/register` rejects invalid email formats.
-*   Ensure `/auth/register` rejects passwords shorter than 6 characters.
-*   Ensure `/auth/login` rejects missing `email` or `password`.
-*   Ensure `/ai/recommend` rejects missing or invalid fields (budget not in allowed values, days < 1, empty interests).
+*   `/auth/register` rejects missing name/email/password with 400 + field errors.
+*   `/ai/recommend` rejects invalid `budget` values (not in `budget|mid-range|luxury`).
+*   `/ai/recommend` rejects `days < 1` and empty `interests`.
 
-### 3.4 Relational Data Fetching
-*   Ensure fetching `GET /destinations/:id/places` successfully retrieves the subset of documents attached to the parent destination, preventing full-table scans.
+### 3.4 AI Controller — Cache/DB/Gemini Flow
+*   On Redis cache hit: returns `source: "cache"`, Gemini NOT called.
+*   On DB hit (Redis miss): returns `source: "db"`, Gemini NOT called.
+*   On both misses: calls Gemini Phase 1 (name), then Phase 2 (full JSON).
+*   On Gemini parse failure: throws `AppError(502)` without crashing server.
+*   AI-generated destination is saved to MongoDB after fresh Gemini call.
+*   Mock Gemini with `jest.mock()` — test controller logic independently of LLM.
 
-### 3.5 The AI Recommendation Controller
-*   **Mocking Gemini**: Since live LLM requests incur latency and potential costs, unit tests for `/ai/recommend` must use `jest.mock()` to fake the Gemini JSON object response. The test should verify the controller successfully parses `{ recommendedDestination, reason }` and handles unexpected formats safely by throwing an `AppError(502)` without crashing the server.
+### 3.5 Redis Service
+*   `get(key)` returns `null` on miss, not an error.
+*   If Redis is unavailable, controller degrades gracefully (falls through to MongoDB).
+
+### 3.6 Relational Sub-Entity APIs
+*   `GET /destinations/:id/places` retrieves only places for that destination.
+*   `GET /destinations/:id/places/:placeId/restaurants` retrieves only restaurants linked to that place.
+*   `GET /destinations/:id/places/:placeId/stays` retrieves only stays linked to that place.
 
 ## 4. High-Priority Frontend Tests
+
 ### 4.1 Form Validation (Formik + Yup)
-*   Ensure the Login form shows inline error messages for empty email and password on submit.
-*   Ensure the Login form shows "Invalid email address" for malformed emails.
-*   Ensure the Register form shows "Passwords do not match" when password and confirm fields differ.
-*   Ensure the Register form shows "Password must be at least 6 characters" for short passwords.
-*   Ensure the AI Search form validates all required fields with appropriate messages.
+*   Login shows inline errors for empty email and password on submit.
+*   Register shows "Passwords do not match" on mismatch.
+*   AI Search shows error for budget not in allowed values.
+*   AI Search form validates all 5 fields.
 
 ### 4.2 Reusable Components
-*   Ensure `FormField` renders label, input, and error message correctly.
-*   Ensure `LoadingButton` shows spinner when `isLoading={true}` and disables click.
-*   Ensure `Toast` displays success/error/info variants with correct styling.
+*   `FormField` renders label, input, inline error.
+*   `LoadingButton` shows spinner when `isLoading={true}` and disables click.
+*   `Toast` displays success/error/info variants.
 
-### 4.3 Component State
-*   Ensure the "Save to Wishlist" button toggles visual state conditionally based on Auth Context.
-*   Ensure the Advanced Search Form correctly manages the states of inputs (Location, Budget, Time, Style, Interests) via Formik.
+### 4.3 AI Search Result
+*   On success, 4–5 place preview cards are rendered.
+*   "View Full Itinerary" button links to `/ai-destination?name={slug}`.
+*   "New Search" button resets the form and clears results.
+
+### 4.4 AI Detail Page
+*   Two plan tabs render; clicking a tab switches the active plan.
+*   Each place card shows its restaurants and stays.
+*   Budget-closest options appear first.
 
 ## 5. End-to-End (E2E) Journeys
-1.  **AI Search Flow**: User fills out Formik form → Yup validates → Clicks 'Get Recommendations' → Sees LoadingButton spinner → Views the AI's 'recommendedDestination' → Clicks physical link to navigate to that Destination Detail page.
-2.  **Wishlist Flow**: Visitor tries to wishlist → Redirected to Login → Fills Formik login form → Yup validates → Logs in → Returns to Destination → Clicks Wishlist → Toast shows success → Navigates to Wishlist page → Sees saved Destination component.
-3.  **Validation Flow**: User submits empty Login form → Inline Yup errors appear on all fields → User corrects email only → Password error remains → User submits with wrong credentials → Server error banner appears → User corrects → Successful login.
+1.  **AI Search Flow**: Fill form → submit → see LoadingButton spinner → see 4–5 place cards → click "View Full Itinerary" → see AI detail page with 2 plan tabs → switch tabs → see per-place restaurants/stays.
+2.  **Cache Hit Flow**: Run same search twice → second response returns faster (source: "cache").
+3.  **Wishlist Flow**: Login → browse destinations → save to wishlist → navigate to `/wishlist` → see saved card → remove → card disappears.
+4.  **Validation Flow**: Submit empty login → inline errors appear → correct fields → successful login.

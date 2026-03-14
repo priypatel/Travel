@@ -2,40 +2,43 @@
 
 ## 1. In Scope (MVP)
 
-### 1.1 Frontend (React + Mapbox)
-*   Implementation of the updated UI Wireframes (Home, Destination Detail, Advanced Search, Wishlist, Login, Register).
-*   Dynamic rendering of Destination Cards, Top 5 Places, Top 5 Restaurants, and Top 5 Property Stays.
-*   Advanced AI Search Form capturing location, budget, travel days, travel style, and interests.
-*   Authenticatable Wishlist interaction (Save/Remove buttons).
-*   Month filtering logic for the Destinations grid.
-*   Mapbox integration for visual route plotting on the Destination Detail page.
-*   JWT-based auth state handling.
-*   **Formik + Yup** for all form state management and schema-based validation (Login, Register, AI Search).
-*   **Reusable component library**: `FormField` (label + input + error), `LoadingButton` (submit with spinner), `Toast` (notification popup).
-*   **Custom hooks**: `useAuth` (login, register, logout, user state), `useApi` (generic data-fetching with loading/error).
-*   **Axios interceptors**: Request interceptor (auto-attach JWT), response interceptor (global 401 handling — clear session, redirect to login).
-*   **Yup validation schemas** (`client/src/validators/`) shared across form pages.
+### 1.1 Frontend (React + Leaflet)
+*   Implementation of UI Wireframes (Home, Destination Detail, AI Search, AI Detail, Wishlist, Login, Register).
+*   Dynamic rendering of Destination Cards, Places, Restaurants, and Property Stays.
+*   **AI Search result** showing 4–5 place preview cards + "View Full Itinerary" button.
+*   **AI Destination Detail page** with two plan tabs, per-place restaurants and stays (budget-matched).
+*   Leaflet + OpenStreetMap integration for map on Destination Detail and AI Detail pages.
+*   Nominatim geocoding for POI markers with deterministic fallback scatter.
+*   Authenticatable Wishlist interaction.
+*   Month filtering for the Destinations grid.
+*   Formik + Yup for all form validation (Login, Register, AI Search).
+*   Reusable components: `FormField`, `LoadingButton`, `Toast`.
+*   Custom hooks: `useAuth`, `useApi`.
+*   Axios with `withCredentials: true`, 401 → silent token refresh → retry.
 
 ### 1.2 Backend (Node.js + Express)
-*   JWT-based stateless authentication (`/auth/login`, `/auth/register`) with strict role enforcement (always default to "user").
-*   Creation of a database seed script to manually provision "admin" accounts and populate the database with the core ~20+ Top India & World destinations (along with their places, restaurants, and stays).
-*   CRUD routes mapping to the complex `travel_ai_db` relational collections: Destinations, Places, Restaurants, PropertyStays, Wishlists.
-*   API integration with Google Gemini Free Tier for prompt completion (`/ai/recommend`).
-*   JSON parsing and validation of Gemini responses to extract `{ recommendedDestination, reason }`.
-*   **Centralized error-handling middleware**: 
-    *   `AppError` custom error class (`utils/AppError.js`) with `statusCode` and `isOperational`.
-    *   `asyncHandler` middleware (`middleware/asyncHandler.js`) wrapping all async controllers — eliminates `try/catch` boilerplate.
-    *   `errorHandler` global middleware (`middleware/errorHandler.js`) as the last Express middleware, formatting all errors into a consistent `{ status, message, errors }` JSON shape.
-    *   `validate` middleware (`middleware/validate.js`) that validates `req.body` against Yup schemas before the request reaches the controller.
-*   **Yup validation schemas** (`validators/`) for all POST/PUT request bodies (auth, wishlist, AI recommend).
+*   JWT auth via HttpOnly cookies (access 15min + refresh 7day).
+*   Seed script: 20+ destinations with places, restaurants, stays.
+*   **Updated AI endpoint** (`POST /api/ai/recommend`):
+    *   Check Upstash Redis → check MongoDB by slug → call Gemini 2.5 Flash.
+    *   Two-phase Gemini prompting (Phase 1: name, Phase 2: full itinerary JSON).
+    *   Days-aware places (N days = N places in Plan 1).
+    *   Budget-matched restaurants and stays per place (2 options closest to user budget).
+    *   2 travel plans per destination (standard + extended).
+    *   Persist AI result to MongoDB (Destination + Places + Restaurants + Stays).
+    *   Cache in Upstash Redis (`ai:dest:{slug}` TTL 7d, `ai:search:{hash}` TTL 1d).
+*   **New sub-entity endpoints**: `GET /destinations/:id/places/:placeId/restaurants|stays`.
+*   Centralized error handling: `AppError`, `asyncHandler`, `errorHandler`, `validate`.
+*   Yup schemas for all POST/PUT bodies.
 
-### 1.3 Database & DevOps
-*   MongoDB Atlas Setup configuring 6 distinct collections.
-*   Index creation on `bestTime`, `rating`, and reference keys (`destinationId`, `userId`) to optimize load times.
+### 1.3 Database & Cache
+*   MongoDB Atlas: 6 collections. New fields: `Destination.slug`, `Destination.travelPlans[]`, `Place.coordinates`, `Place.dayIndex`, `Restaurant.placeId`, `PropertyStay.placeId`.
+*   Upstash Redis: serverless caching, free tier, no local installation.
+*   MongoDB indexes on `slug` (unique), `destinationId`, `placeId`, `userId`.
 
-## 2. Out of Scope (Post-MVP / Future Phases)
-*   Booking integrations (e.g., direct booking of the Top 5 Property Stays).
-*   Live GPS tracking, turn-by-turn routing, and real-time transit APIs.
-*   User-generated content (e.g., custom reviews, photos uploads).
-*   Payment gateways and premium subscriptions.
-*   Multi-city hopping AI algorithms (Current MVP scope is pointing to a single recommended destination).
+## 2. Out of Scope (Post-MVP)
+*   Booking integrations (direct booking of stays).
+*   Live GPS or turn-by-turn routing.
+*   User-generated content (reviews, photo uploads).
+*   Payment gateways or premium subscriptions.
+*   Real-time availability from hotels/restaurants.

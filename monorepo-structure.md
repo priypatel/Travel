@@ -4,85 +4,87 @@
 travel-ai-app/
 │
 ├── client/                     # Frontend React Application
-│   ├── public/                 
-│   ├── src/                    
-│   │   ├── components/         # Reusable UI components
-│   │   │   ├── FormField.jsx        # Label + Input + Error message wrapper
-│   │   │   ├── LoadingButton.jsx    # Submit button with spinner state
-│   │   │   ├── Toast.jsx            # Notification popup (success/error/info)
-│   │   │   ├── DestinationCard.jsx  # Destination card for grids
-│   │   │   ├── TopPlaceCard.jsx     # Place/restaurant/stay sub-card
-│   │   │   └── Navbar.jsx           # Global sticky navigation
-│   │   ├── pages/              # Views (Home, DestinationDetail, AiSearch, Wishlist, Login, Register)
-│   │   ├── hooks/              # Custom reusable hooks
-│   │   │   ├── useAuth.js           # Exposes login, register, logout, user, token
-│   │   │   └── useApi.js            # Generic data-fetching hook with loading/error
-│   │   ├── validators/         # Yup validation schemas
-│   │   │   ├── loginSchema.js       # Login form validation (email, password)
-│   │   │   ├── registerSchema.js    # Register form validation (name, email, password, confirm)
-│   │   │   └── aiSearchSchema.js    # AI search form validation
-│   │   ├── context/            # Global UI and Auth state (if not using Redux)
-│   │   ├── store/              # Redux store and slices
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── FormField.jsx
+│   │   │   ├── LoadingButton.jsx
+│   │   │   ├── Toast.jsx
+│   │   │   ├── DestinationCard.jsx
+│   │   │   ├── TopPlaceCard.jsx
+│   │   │   └── Navbar.jsx
+│   │   ├── pages/
+│   │   │   ├── HomePage.jsx
+│   │   │   ├── DestinationDetailPage.jsx      # Seeded destinations
+│   │   │   ├── AISearchPage.jsx               # Form + 4-5 place preview cards
+│   │   │   ├── AIDestinationDetailPage.jsx    # 2 plan tabs, per-place res/stays
+│   │   │   ├── WishlistPage.jsx
+│   │   │   ├── LoginPage.jsx
+│   │   │   └── RegisterPage.jsx
+│   │   ├── hooks/
+│   │   │   ├── useAuth.js
+│   │   │   └── useApi.js
+│   │   ├── validators/
+│   │   │   ├── loginSchema.js
+│   │   │   ├── registerSchema.js
+│   │   │   └── aiSearchSchema.js
+│   │   ├── store/
 │   │   │   ├── index.js
 │   │   │   └── slices/
-│   │   │       └── authSlice.js
-│   │   ├── api/                # Axios instance with interceptors
-│   │   │   ├── axiosInstance.js      # Base Axios config with JWT & 401 interceptors
-│   │   │   └── authApi.js           # Auth API wrappers
-│   │   ├── App.jsx              
-│   │   └── index.css           # Tailwind system configuration
-│   ├── package.json
-│   └── tailwind.config.js      
+│   │   │       ├── authSlice.js
+│   │   │       ├── destinationSlice.js
+│   │   │       └── aiSlice.js                 # AI search + detail state
+│   │   ├── api/
+│   │   │   ├── axiosInstance.js               # withCredentials + 401 refresh
+│   │   │   ├── authApi.js
+│   │   │   └── destinationsApi.js
+│   │   ├── App.jsx
+│   │   └── index.css
+│   └── package.json
 │
-├── server/                     # Backend Express Application
+├── server/
 │   ├── src/
-│   │   ├── controllers/        # Route handlers (wrapped by asyncHandler — no try/catch)
+│   │   ├── controllers/
 │   │   │   ├── auth.controller.js
 │   │   │   ├── destination.controller.js
 │   │   │   ├── wishlist.controller.js
-│   │   │   └── ai.controller.js
-│   │   ├── routes/             # Map controllers to Express Router logic
+│   │   │   └── ai.controller.js              # Cache → DB → Gemini flow
+│   │   ├── routes/
 │   │   │   ├── auth.routes.js
-│   │   │   ├── destination.routes.js
+│   │   │   ├── destination.routes.js         # Includes /:id/places/:placeId/restaurants|stays
 │   │   │   ├── wishlist.routes.js
 │   │   │   └── ai.routes.js
-│   │   ├── models/             # Mongoose schemas representing the 6 DB Collections
+│   │   ├── models/
 │   │   │   ├── User.model.js
-│   │   │   ├── Destination.model.js
-│   │   │   ├── Place.model.js
-│   │   │   ├── Restaurant.model.js
-│   │   │   ├── PropertyStay.model.js
+│   │   │   ├── Destination.model.js          # +slug, +aiGenerated, +travelPlans[]
+│   │   │   ├── Place.model.js                # +coordinates, +dayIndex
+│   │   │   ├── Restaurant.model.js           # +placeId (optional)
+│   │   │   ├── PropertyStay.model.js         # +placeId (optional)
 │   │   │   └── Wishlist.model.js
-│   │   ├── middleware/         # Express middleware
-│   │   │   ├── errorHandler.js      # Global centralized error handler (last middleware)
-│   │   │   ├── asyncHandler.js      # Wraps async controllers to catch errors
-│   │   │   ├── validate.js          # Validates req.body against a Yup schema
-│   │   │   └── verifyToken.js       # JWT authentication guard
-│   │   ├── validators/         # Yup schemas for request body validation
-│   │   │   ├── auth.validator.js    # registerSchema, loginSchema
+│   │   ├── services/
+│   │   │   ├── gemini.service.js             # 2-phase prompting, model: gemini-2.5-flash
+│   │   │   └── redis.service.js              # Upstash Redis get/set/del helpers
+│   │   ├── middleware/
+│   │   │   ├── errorHandler.js
+│   │   │   ├── asyncHandler.js
+│   │   │   ├── validate.js
+│   │   │   └── protect.js                   # JWT cookie auth guard
+│   │   ├── validators/
+│   │   │   ├── auth.validator.js
 │   │   │   ├── wishlist.validator.js
-│   │   │   └── ai.validator.js
-│   │   ├── utils/              # Shared utilities
-│   │   │   └── AppError.js          # Custom error class (statusCode, isOperational)
-│   │   ├── services/           # External API calls (Gemini recommendation fetcher)
-│   │   └── index.js            # Express server entry point handling /api routing
-│   ├── tests/                  # Jest + Supertest test files
-│   │   └── auth.test.js
-│   ├── jest.config.js
-│   ├── package.json
-│   └── .env                    
+│   │   │   └── ai.validator.js              # budget enum: budget|mid-range|luxury
+│   │   ├── utils/
+│   │   │   └── AppError.js
+│   │   ├── seed.js
+│   │   └── app.js
+│   └── package.json
 │
-├── package.json                # Root package for running client & server concurrently
+├── package.json
 └── README.md
 ```
 
 ## Implementation Notes
-*   **Controllers (`server/src/controllers`)**: Every async controller is wrapped by `asyncHandler` — no manual `try/catch` blocks. Controllers throw `AppError` instances for expected errors.
-*   **Middleware (`server/src/middleware`)**: `errorHandler` is the last middleware in Express. `validate` middleware checks `req.body` against a Yup schema and returns a 400 with field-level errors on failure. `asyncHandler` catches rejected promises and passes errors to `errorHandler`.
-*   **Validators (`server/src/validators`)**: Yup schemas defining the expected shape and constraints of request bodies. Shared between backend validation middleware and can mirror frontend Yup schemas.
-*   **Frontend Components (`client/src/components`)**: Reusable `FormField`, `LoadingButton`, and `Toast` components shared across all pages.
-*   **Frontend Hooks (`client/src/hooks`)**: `useAuth` abstracts auth dispatching and navigation; `useApi` provides a generic data-fetching pattern with loading/error state.
-*   **Frontend Validators (`client/src/validators`)**: Yup schemas used by Formik forms for client-side validation. Should mirror backend schemas where applicable.
-*   **API Layer (`client/src/api`)**: `axiosInstance.js` creates a configured Axios instance with request interceptors (auto-attach JWT) and response interceptors (handle 401 globally).
-*   **Routing Modules (`server/src/routes`)**: Segregated logically by `auth.routes.js`, `destination.routes.js`, `wishlist.routes.js`, and `ai.routes.js`.
-*   **Database Models (`server/src/models`)**: Segregated logically into `User.model`, `Destination.model`, `Place.model`, `Restaurant.model`, `PropertyStay.model`, `Wishlist.model`.
+*   **`redis.service.js`**: Wraps `@upstash/redis` with `get(key)`, `set(key, value, ttl)`, `del(key)` helpers. Returns `null` on miss/error so controllers degrade gracefully without Redis.
+*   **`ai.controller.js`**: Implements the 5-step flow: hash params → Redis search cache → Gemini Phase 1 → Redis dest cache → MongoDB → Gemini Phase 2 → DB persist → Redis cache → return.
+*   **`gemini.service.js`**: Exports `getDestinationName(params)` (Phase 1) and `getFullItinerary(destinationName, params)` (Phase 2). Both use `gemini-2.5-flash`.
+*   **`aiSlice.js`**: Redux slice managing `{ result, loading, error }` for AI search and `{ destinationDetail, detailLoading }` for the AI detail page.
+*   **New route**: `GET /destinations/:id/places/:placeId/restaurants` and `stays` — queries Restaurant/PropertyStay by both `destinationId` AND `placeId`.

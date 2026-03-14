@@ -1,117 +1,114 @@
 # UI Wireframes
 
 ## Home Page
-
 Navbar
-Search bar
-Featured destinations
-Popular travel locations
+Month filter bar (Jan–Dec buttons)
+Destination card grid
+Loading skeleton while fetching
 
 ---
 
 ## Login Page
-
 Card layout centered on screen
-
 Logo icon (indigo)
 Heading: "Welcome back"
-Subtitle: "Sign in to continue your journey"
-
-Form (Formik + Yup validation):
-- Email input (required, valid email format, inline error on invalid)
-- Password input (required, inline error if empty)
-- "Sign in" button (LoadingButton — shows spinner during API call)
-
-Error banner (red, appears at top of form if server returns error)
-
-Divider: "or"
-Link: "Don't have an account? Create one" → navigates to Register
-
-Tagline: "Discover your next adventure with AI-powered recommendations"
+Form (Formik + Yup): Email, Password
+LoadingButton: "Sign in"
+Error banner (red, server errors)
+Link: "Don't have an account? Create one"
 
 ---
 
 ## Register Page
-
 Card layout centered on screen
-
 Logo icon (indigo)
 Heading: "Create your account"
-Subtitle: "Start exploring the world today"
-
-Form (Formik + Yup validation):
-- Full name input (required, trimmed, inline error if empty)
-- Email input (required, valid email format, inline error on invalid)
-- Password input (required, min 6 characters, inline error with hint)
-- Confirm password input (required, must match password, inline error on mismatch)
-- "Create account" button (LoadingButton — shows spinner during API call)
-
-**No role selection field** — role is always "user"
-
-Error banner (red, appears at top of form if server returns error, e.g. "Email already in use")
-
-Divider: "or"
-Link: "Already have an account? Sign in" → navigates to Login
-
-Tagline: "Discover your next adventure with AI-powered recommendations"
+Form (Formik + Yup): Name, Email, Password, Confirm Password
+**No role selection field**
+LoadingButton: "Create account"
+Error banner (server errors)
+Link: "Already have an account? Sign in"
 
 ---
 
-## Destination Page
+## Destination Detail Page (`/destinations/:id`)
+Hero image (full width) — destination name + country overlay
+Description paragraph
+Best time to visit badge
 
-Hero image
-Destination name
-Description
-Best time to visit
+Section: Top Places to Visit
+Horizontal card row (name, category, image)
 
-Section
+Section: Top Restaurants
+Horizontal card row (name, cuisine, priceLevel, rating)
 
-Top 5 Places to Visit
-
-Grid layout cards
-
-Section
-
-Top 5 Restaurants
-
-Grid layout cards
-
-Section
-
-Top 5 Property Stays
-
-Grid layout cards
+Section: Where to Stay
+Horizontal card row (name, priceRange, rating)
 
 Map Section
-
-Interactive route map
-
----
-
-## Advanced Search Page
-
-Title
-Find your perfect destination
-
-Form (Formik + Yup validation):
-- Location input (text, required, inline error if empty)
-- Budget range (dropdown: Low/Medium/High, required)
-- Travel length (number, required, min 1, inline error if invalid)
-- Travel style (dropdown, required)
-- Interests (text/tags, required, at least 1 item)
-
-Button
-
-Get Recommendations (LoadingButton — shows spinner while AI processes)
-
-AI Response Card
-
-Displays recommendedDestination and reason
-Appears after API responds
+Full-width Leaflet map (350px height)
+Colour-coded markers: indigo=destination, green=places, cyan=restaurants, purple=stays
+Legend below map
 
 ---
 
-## Wishlist Page
+## Advanced Search Page (`/ai-search`)
 
-Saved destinations list
-Remove from wishlist option
+Title: "Advanced Search"
+Subtitle: "Get personalized travel recommendations based on your preferences"
+
+Form card (Formik + Yup):
+- Location input (optional text, placeholder: "Enter city/country or leave blank for 'anywhere'")
+- Budget Range (dropdown: Budget / Mid-Range / Luxury)
+- Travel Length (number, min 1)
+- Travel Style (dropdown: Adventure / Culture / Relaxing / Nature / Food / Shopping)
+- Interests (multi-select pill tags: Nature, Photography, History, Food, Nightlife, Shopping, Art, Music)
+LoadingButton: "Get Recommendations"
+
+Result Card (appears below form after response):
+- Label: "AI RECOMMENDATION"
+- Destination name + country (large)
+- AI reason paragraph
+- Place preview cards (4-5 cards in horizontal scroll):
+  - Day number badge
+  - Place name
+  - Category chip
+- CTA buttons: "View Full Itinerary →" | "New Search"
+
+---
+
+## AI Destination Detail Page (`/ai-destination?name={slug}`)
+
+Hero gradient banner (indigo→cyan)
+Destination name (large) + country
+Description
+Best time badge | AI Generated badge
+
+Plan Tabs (2 tabs):
+  Tab 1: "Classic [Name] — N Days"
+  Tab 2: "Extended [Name] — N Days"
+
+Active Plan Content:
+  For each place (Day 1, Day 2, ...):
+    Place header card (name, category, day badge, description)
+    
+    Sub-section: Restaurants Near [Place Name]
+      2 restaurant cards (closest budget match first)
+      Card: name | cuisine | priceLevel chip | rating stars
+    
+    Sub-section: Where to Stay Near [Place Name]
+      2 stay cards (closest budget match first)
+      Card: name | priceRange chip | rating | location
+
+Map Section:
+  Full-width Leaflet map
+  All place markers (green) + restaurant markers (cyan) + stay markers (purple)
+  Legend below
+
+---
+
+## Wishlist Page (`/wishlist`)
+Protected route — redirect to login if unauthenticated
+Grid of saved destination cards
+"Remove" button on each card
+Empty state: "No saved destinations yet — explore and save your favourites"
