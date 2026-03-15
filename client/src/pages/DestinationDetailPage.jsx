@@ -325,7 +325,7 @@ function DestinationMap({ lat, lng, name, places = [], restBuckets = [], stayBuc
   }, [selectedDay, coordsReady]);
 
   return (
-    <div>
+    <div className="isolate">
       {/* Day filter bar */}
       <div className="flex flex-wrap gap-2 mb-3">
         <button
