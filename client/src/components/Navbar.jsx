@@ -60,6 +60,11 @@ export default function Navbar() {
               Wishlist
             </NavLink>
           )}
+          {user?.role === 'admin' && (
+            <NavLink to="/admin" className={linkClass}>
+              Admin
+            </NavLink>
+          )}
         </div>
 
         {/* Desktop auth buttons */}
@@ -124,6 +129,11 @@ export default function Navbar() {
           {user && (
             <NavLink to="/wishlist" className={linkClass} onClick={() => setMenuOpen(false)}>
               Wishlist
+            </NavLink>
+          )}
+          {user?.role === 'admin' && (
+            <NavLink to="/admin" className={linkClass} onClick={() => setMenuOpen(false)}>
+              Admin
             </NavLink>
           )}
           <hr className="border-gray-100" />
