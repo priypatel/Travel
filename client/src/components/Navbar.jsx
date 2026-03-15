@@ -66,7 +66,12 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-3">
           {user ? (
             <>
-              <span className="text-sm text-[#0F172A] font-medium">{user.name}</span>
+              <Link to="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                <div className="w-8 h-8 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center">
+                  {user.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
+                </div>
+                <span className="text-sm text-[#0F172A] font-medium">{user.name}</span>
+              </Link>
               <button
                 onClick={handleLogout}
                 className="text-sm font-medium px-4 py-2 rounded-lg border border-gray-200 text-[#0F172A] hover:bg-gray-50 transition-colors"
@@ -123,9 +128,15 @@ export default function Navbar() {
           )}
           <hr className="border-gray-100" />
           {user ? (
-            <button onClick={handleLogout} className="text-sm font-medium text-left text-red-500">
-              Sign out ({user.name})
-            </button>
+            <>
+              <Link to="/profile" className="text-sm font-medium text-[#0F172A]" onClick={() => setMenuOpen(false)}>
+                Profile ({user.name})
+              </Link>
+              <button onClick={handleLogout} className="text-sm font-medium text-left text-red-500">
+                Sign out
+              </button>
+            </>
+
           ) : !isAuthPage ? (
             <div className="flex gap-3">
               <Link to="/login" className="text-sm font-semibold px-4 py-2 rounded-lg border border-indigo-600 text-indigo-600 hover:bg-indigo-50 transition-colors" onClick={() => setMenuOpen(false)}>

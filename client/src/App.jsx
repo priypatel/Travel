@@ -13,6 +13,7 @@ import RegisterPage from './pages/RegisterPage';
 import AISearchPage from './pages/AISearchPage';
 import AIDestinationDetailPage from './pages/AIDestinationDetailPage';
 import WishlistPage from './pages/WishlistPage';
+import ProfilePage from './pages/ProfilePage';
 
 function ProtectedRoute({ children }) {
   const { user } = useSelector((state) => state.auth);
@@ -48,6 +49,7 @@ function App() {
           <Route path="/ai-search"         element={<AISearchPage />} />
           <Route path="/ai-destination"    element={<AIDestinationDetailPage />} />
           <Route path="/wishlist"          element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
+          <Route path="/profile"           element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="*"                  element={<Navigate to="/" replace />} />
         </Routes>
       </main>
