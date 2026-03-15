@@ -61,9 +61,16 @@ function DestinationCard({ dest, index, budget, days, onExplore }) {
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow flex flex-col">
-      {/* Hero gradient */}
-      <div className={`relative h-44 bg-gradient-to-br ${gradient} flex items-end`}>
-        <div className="absolute inset-0 bg-black/10" />
+      {/* Hero — real photo or gradient fallback */}
+      <div className={`relative h-44 overflow-hidden flex items-end${dest.heroImage ? '' : ` bg-gradient-to-br ${gradient}`}`}>
+        {dest.heroImage && (
+          <img
+            src={dest.heroImage}
+            alt={dest.destinationName}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        )}
+        <div className="absolute inset-0 bg-black/30" />
         {/* Tags */}
         <div className="relative z-10 flex flex-wrap gap-1.5 p-3">
           {dest.tags?.slice(0, 3).map((tag) => (

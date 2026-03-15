@@ -3,6 +3,7 @@ import { useFormik } from 'formik';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { login, clearError } from '../store/slices/authSlice';
+import Logo from '../components/Logo';
 import { loginSchema } from '../validators/auth.validator';
 import FormField from '../components/FormField';
 
@@ -40,10 +41,8 @@ export default function LoginPage() {
       <div className="relative w-full max-w-md">
         {/* Logo / Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-indigo-600 rounded-xl mb-4 shadow-lg">
-            <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" />
-            </svg>
+          <div className="flex justify-center mb-4">
+            <Logo className="w-12 h-12 shadow-lg rounded-full" />
           </div>
           <h1 className="text-2xl font-bold text-[#111827]">Welcome back</h1>
           <p className="text-[#6B7280] text-sm mt-1">Sign in to continue your journey</p>

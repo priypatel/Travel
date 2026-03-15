@@ -426,8 +426,17 @@ export default function AIDestinationDetailPage() {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       {/* Hero */}
-      <section className="relative h-[40vh] flex items-end overflow-hidden bg-gradient-to-br from-[#4F46E5] via-[#7C3AED] to-[#06B6D4]">
-        <div className="absolute inset-0 bg-[#0F172A]/30" />
+      <section className="relative h-[40vh] flex items-end overflow-hidden">
+        {destination?.heroImage ? (
+          <img
+            src={destination.heroImage}
+            alt={destination.name}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-[#4F46E5] via-[#7C3AED] to-[#06B6D4]" />
+        )}
+        <div className="absolute inset-0 bg-[#0F172A]/40" />
         <div className="relative z-10 max-w-[1200px] mx-auto px-6 pb-10 w-full">
           <Link
             to={fromWishlist ? '/wishlist' : '/ai-search'}

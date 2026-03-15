@@ -5,6 +5,23 @@ import { getTopDestinations, getFullItinerary } from '../services/gemini.service
 import { redisGet, redisSet } from '../services/redis.service.js';
 import Destination from '../models/Destination.model.js';
 
+// Fetch a landscape photo URL from Unsplash (silent no-op if key absent or request fails)
+async function fetchUnsplashImage(query) {
+  const key = process.env.UNSPLASH_ACCESS_KEY;
+  if (!key) return null;
+  try {
+    const res = await fetch(
+      `https://api.unsplash.com/photos/random?query=${encodeURIComponent(query)}&orientation=landscape`,
+      { headers: { Authorization: `Client-ID ${key}` } }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.urls?.regular || null;
+  } catch {
+    return null;
+  }
+}
+
 function toSlug(str) {
   return str
     .toLowerCase()
@@ -72,6 +89,14 @@ export const recommend = asyncHandler(async (req, res) => {
   } catch (err) {
     throw new AppError(err.message || 'AI recommendation failed. Please try again.', 502);
   }
+
+  // Attach Unsplash hero images in parallel (silently skip if key absent)
+  destinations = await Promise.all(
+    destinations.map(async (d) => {
+      const heroImage = await fetchUnsplashImage(`${d.destinationName} ${d.country || ''} travel`);
+      return { ...d, heroImage: heroImage || '' };
+    })
+  );
 
   // Cache search result (1d)
   await redisSet(searchCacheKey, destinations, 86400);
@@ -143,11 +168,15 @@ export const getDestinationBySlug = asyncHandler(async (req, res) => {
     );
   }
 
+  // Fetch Unsplash hero image (silently skip if key absent)
+  const heroImage = await fetchUnsplashImage(`${destName} ${destCountry} travel`);
+  const destinationObj = { ...destination.toObject(), heroImage: heroImage || destination.heroImage || '' };
+
   // Cache the full response (destination stub + generated plans) keyed by budget+days — 7d TTL
-  await redisSet(destCacheKey, { destination: destination.toObject(), plans: itinerary.plans }, 604800);
+  await redisSet(destCacheKey, { destination: destinationObj, plans: itinerary.plans }, 604800);
 
   res.status(200).json({
     status: 'success',
-    data: { destination, plans: itinerary.plans, source: 'ai' },
+    data: { destination: destinationObj, plans: itinerary.plans, source: 'ai' },
   });
 });
