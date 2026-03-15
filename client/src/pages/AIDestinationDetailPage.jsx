@@ -5,6 +5,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { getAIDestinationBySlug, clearAIDetail } from '../store/slices/aiSlice';
 import WishlistButton from '../components/WishlistButton';
+import ShareButton from '../components/ShareButton';
 
 const CATEGORY_COLORS = {
   Nature:      { bg: 'bg-emerald-50', text: 'text-emerald-600', icon: '🌿' },
@@ -247,10 +248,10 @@ function DestinationMap({ lat, lng, name, places = [] }) {
   return (
     <div className="isolate">
       {/* Day filter bar */}
-      <div className="flex flex-wrap gap-2 mb-3">
+      <div className="flex gap-2 mb-3 overflow-x-auto pb-1 overflow-y-visible" style={{ scrollbarWidth: 'none' }}>
         <button
           onClick={() => setSelectedDay(null)}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+          className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
             selectedDay === null
               ? 'bg-[#4F46E5] text-white shadow-sm'
               : 'bg-gray-100 text-gray-500 hover:bg-indigo-50 hover:text-indigo-600'
@@ -264,7 +265,7 @@ function DestinationMap({ lat, lng, name, places = [] }) {
             <button
               key={day}
               onClick={() => setSelectedDay(day)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 selectedDay === day
                   ? 'bg-[#4F46E5] text-white shadow-sm'
                   : 'bg-gray-100 text-gray-500 hover:bg-indigo-50 hover:text-indigo-600'
@@ -327,14 +328,77 @@ export default function AIDestinationDetailPage() {
   if (detailLoading) {
     return (
       <div className="min-h-screen bg-[#F8FAFC]">
-        <div className="h-[40vh] bg-gradient-to-br from-indigo-600 to-cyan-500 animate-pulse" />
-        <div className="max-w-[1200px] mx-auto px-6 py-10 space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/3 animate-pulse" />
-          <div className="h-4 bg-gray-100 rounded w-2/3 animate-pulse" />
-          <div className="h-4 bg-gray-100 rounded w-1/2 animate-pulse" />
+        {/* Hero skeleton */}
+        <div className="h-[40vh] bg-gradient-to-br from-[#4F46E5] via-[#7C3AED] to-[#06B6D4] flex items-end">
+          <div className="max-w-[1200px] mx-auto px-6 pb-10 w-full animate-pulse">
+            <div className="h-3 bg-white/20 rounded w-24 mb-4" />
+            <div className="h-10 bg-white/30 rounded w-64 mb-2" />
+            <div className="h-5 bg-white/20 rounded w-40" />
+          </div>
         </div>
-        <div className="max-w-[1200px] mx-auto px-6 text-center text-gray-400 text-sm mt-4">
-          Generating full itinerary with AI — this may take 10–20 seconds...
+
+        <div className="max-w-[1200px] mx-auto px-6 py-10 space-y-5">
+          {/* AI generating message */}
+          <div className="flex items-center gap-3 text-indigo-600 text-sm font-medium">
+            <svg className="w-4 h-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+            </svg>
+            Generating your itinerary with AI — this may take 10–20 seconds...
+          </div>
+
+          {/* Description card skeleton */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm animate-pulse space-y-3">
+            <div className="h-4 bg-gray-200 rounded w-1/4" />
+            <div className="h-3 bg-gray-100 rounded w-full" />
+            <div className="h-3 bg-gray-100 rounded w-5/6" />
+            <div className="h-3 bg-gray-100 rounded w-4/6" />
+          </div>
+
+          {/* Map skeleton */}
+          <div className="bg-white rounded-2xl shadow-sm p-4 animate-pulse">
+            <div className="flex gap-2 mb-3">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-7 w-16 bg-gray-100 rounded-lg" />
+              ))}
+            </div>
+            <div className="w-full h-80 rounded-2xl bg-gray-100" />
+          </div>
+
+          {/* Place card skeletons */}
+          <div className="h-5 bg-gray-200 rounded w-56 animate-pulse" />
+          {[...Array(3)].map((_, idx) => (
+            <div key={idx} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-pulse">
+              <div className="bg-gray-100 px-5 py-4 flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-gray-200 shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="flex gap-2">
+                    <div className="h-4 bg-gray-200 rounded-full w-12" />
+                    <div className="h-4 bg-gray-200 rounded w-16" />
+                  </div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2" />
+                  <div className="h-3 bg-gray-100 rounded w-3/4" />
+                  <div className="h-3 bg-gray-100 rounded w-2/3" />
+                </div>
+              </div>
+              <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[0, 1].map((col) => (
+                  <div key={col} className="space-y-2">
+                    <div className="h-3 bg-gray-100 rounded w-1/3" />
+                    {[0, 1].map((row) => (
+                      <div key={row} className="flex items-center gap-2 bg-gray-50 rounded-lg p-2.5">
+                        <div className="w-6 h-6 rounded bg-gray-200 shrink-0" />
+                        <div className="flex-1 space-y-1.5">
+                          <div className="h-3 bg-gray-200 rounded w-3/4" />
+                          <div className="h-2.5 bg-gray-100 rounded w-1/2" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -366,7 +430,7 @@ export default function AIDestinationDetailPage() {
         <div className="relative z-10 max-w-[1200px] mx-auto px-6 pb-10 w-full">
           <Link
             to={fromWishlist ? '/wishlist' : '/ai-search'}
-            className="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-4 transition-colors"
+            className="no-print inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-4 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -388,9 +452,12 @@ export default function AIDestinationDetailPage() {
                   <span className="text-indigo-200 font-normal text-3xl">, {destination.country}</span>
                 )}
               </h1>
-              {destination?._id && (
-                <WishlistButton destinationId={destination._id} size="md" className="shrink-0" />
-              )}
+              <div className="no-print flex items-center gap-2">
+                {destination?._id && (
+                  <WishlistButton destinationId={destination._id} size="md" className="shrink-0" />
+                )}
+                <ShareButton name={destination?.name || ''} country={destination?.country || ''} />
+              </div>
             </div>
             {style && (
               <div className="mt-2">
@@ -415,7 +482,7 @@ export default function AIDestinationDetailPage() {
 
         {/* Map */}
         {destination?.coordinates?.lat && destination?.coordinates?.lng && activePlan && (
-          <div className="bg-white rounded-2xl shadow-sm mb-8 p-4">
+          <div className="no-print bg-white rounded-2xl shadow-sm mb-8 p-4">
             <DestinationMap
               key={activeTab}
               lat={destination.coordinates.lat}
