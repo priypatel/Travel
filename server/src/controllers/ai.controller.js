@@ -86,13 +86,13 @@ export const getDestinationBySlug = asyncHandler(async (req, res) => {
   const { budget = 'mid-range', days = 5, name, style } = req.query;
   if (!slug) throw new AppError('Slug is required', 400);
 
-  // v2 cache key — versioned to avoid serving stale pre-upsert cached docs
-  const destCacheKey = `ai:dest:v2:${slug}`;
+  // v4 cache key — includes budget + days so each budget/duration combo gets its own itinerary
+  const destCacheKey = `ai:dest:v4:${slug}:${budget}:${days}`;
   const cached = await redisGet(destCacheKey);
   if (cached) {
     return res.status(200).json({
       status: 'success',
-      data: { destination: cached, plans: cached.travelPlans, source: 'cache' },
+      data: { destination: cached.destination, plans: cached.plans, source: 'cache' },
     });
   }
 
@@ -103,62 +103,51 @@ export const getDestinationBySlug = asyncHandler(async (req, res) => {
 
   const planStyle = style ? decodeURIComponent(style) : null;
 
-  // Check MongoDB — may find a Phase 1 stub (no travelPlans) or a full doc
-  let destination = await Destination.findOne({ slug, aiGenerated: true });
-
-  // Generate if: doc doesn't exist, OR it's a Phase 1 stub with no itinerary
-  if (!destination || !destination.travelPlans?.length) {
-    let itinerary;
-    try {
-      itinerary = await getFullItinerary(destinationName, budget, Number(days), planStyle);
-    } catch (err) {
-      throw new AppError(err.message || 'Failed to generate itinerary.', 502);
-    }
-
-    const nameParts = destinationName.split(',');
-    const destName = nameParts[0].trim();
-    const destCountry = nameParts[1]?.trim() || '';
-    if (!destName || destName.toLowerCase() === 'undefined') {
-      throw new AppError('Invalid destination name returned by AI', 502);
-    }
-
-    if (destination) {
-      // Update the Phase 1 stub in-place — preserves the same _id (critical for wishlist matching)
-      destination = await Destination.findByIdAndUpdate(
-        destination._id,
-        {
-          $set: {
-            name: destName || destination.name,
-            country: destCountry || destination.country,
-            description: itinerary.description,
-            coordinates: itinerary.coordinates,
-            travelPlans: itinerary.plans,
-          },
-        },
-        { new: true }
-      );
-    } else {
-      destination = await Destination.create({
-        name: destName,
-        country: destCountry,
-        slug,
-        description: itinerary.description,
-        coordinates: itinerary.coordinates,
-        travelPlans: itinerary.plans,
-        aiGenerated: true,
-        planStyle: planStyle || '',
-        bestTime: '',
-        heroImage: '',
-        tags: [],
-      });
-    }
+  // Always generate fresh itinerary from Gemini for this budget+days combo
+  let itinerary;
+  try {
+    itinerary = await getFullItinerary(destinationName, budget, Number(days), planStyle);
+  } catch (err) {
+    throw new AppError(err.message || 'Failed to generate itinerary.', 502);
   }
 
-  // Cache 7d
-  await redisSet(destCacheKey, destination.toObject(), 604800);
+  const nameParts = destinationName.split(',');
+  const destName = nameParts[0].trim();
+  const destCountry = nameParts[1]?.trim() || '';
+  if (!destName || destName.toLowerCase() === 'undefined') {
+    throw new AppError('Invalid destination name returned by AI', 502);
+  }
+
+  // Ensure MongoDB stub exists for wishlist _id — never store budget-specific travelPlans in DB
+  let destination = await Destination.findOne({ slug, aiGenerated: true });
+  if (!destination) {
+    destination = await Destination.create({
+      name: destName,
+      country: destCountry,
+      slug,
+      description: itinerary.description,
+      coordinates: itinerary.coordinates,
+      travelPlans: [],
+      aiGenerated: true,
+      planStyle: planStyle || '',
+      bestTime: '',
+      heroImage: '',
+      tags: [],
+    });
+  } else {
+    // Update base info only — travelPlans stay empty in DB (budget-specific, cached in Redis only)
+    destination = await Destination.findByIdAndUpdate(
+      destination._id,
+      { $set: { description: itinerary.description, coordinates: itinerary.coordinates } },
+      { new: true }
+    );
+  }
+
+  // Cache the full response (destination stub + generated plans) keyed by budget+days — 7d TTL
+  await redisSet(destCacheKey, { destination: destination.toObject(), plans: itinerary.plans }, 604800);
 
   res.status(200).json({
     status: 'success',
-    data: { destination, plans: destination.travelPlans, source: 'ai' },
+    data: { destination, plans: itinerary.plans, source: 'ai' },
   });
 });

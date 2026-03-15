@@ -6,11 +6,23 @@ import { useNavigate } from 'react-router-dom';
 import { getAIRecommendation, clearAIResult } from '../store/slices/aiSlice';
 import WishlistButton from '../components/WishlistButton';
 
-const BUDGET_OPTIONS = [
-  { value: 'budget',    label: 'Budget / Backpacker' },
-  { value: 'mid-range', label: 'Mid-Range' },
-  { value: 'luxury',    label: 'Luxury' },
+// Per-day rates MUST match BUDGET_PRICE_GUIDE in server/src/services/gemini.service.js
+// budget: $30–65/day | mid-range: $90–160/day | luxury: $260+/day
+const BUDGET_BASE = [
+  { value: 'budget',    name: 'Budget',    minPerDay: 30,  maxPerDay: 65  },
+  { value: 'mid-range', name: 'Mid-Range', minPerDay: 90,  maxPerDay: 160 },
+  { value: 'luxury',    name: 'Luxury',    minPerDay: 260, maxPerDay: null },
 ];
+
+function getBudgetOptions(days) {
+  const d = Math.max(1, Number(days) || 1);
+  return BUDGET_BASE.map(({ value, name, minPerDay, maxPerDay }) => {
+    const min = minPerDay * d;
+    const max = maxPerDay ? maxPerDay * d : null;
+    const range = max ? `$${min}–$${max}` : `$${min}+`;
+    return { value, label: `${name} (${range} / ${d} day${d !== 1 ? 's' : ''})` };
+  });
+}
 
 const TRAVEL_STYLE_OPTIONS = [
   'Adventure', 'Relaxing', 'Culture', 'Family', 'Romantic', 'Solo',
@@ -228,7 +240,7 @@ export default function AISearchPage() {
                     onChange={formik.handleChange}
                     className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl text-sm text-[#111827] bg-white focus:outline-none focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] appearance-none transition"
                   >
-                    {BUDGET_OPTIONS.map((o) => (
+                    {getBudgetOptions(formik.values.days).map((o) => (
                       <option key={o.value} value={o.value}>{o.label}</option>
                     ))}
                   </select>

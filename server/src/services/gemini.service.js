@@ -109,9 +109,17 @@ Rules:
  * itinerary covers multiple places spread across the whole region in that style.
  * Returns { description, coordinates, plans[2] }
  */
+// Explicit per-budget price constraints — must match frontend BUDGET_BASE per-day rates
+const BUDGET_PRICE_GUIDE = {
+  budget:      'stays $15–40/night (hostels, guesthouses, budget hotels), meals $5–15/person, total ~$30–65/day',
+  'mid-range': 'stays $65–120/night (3-star hotels, boutique), meals $15–40/person, total ~$90–160/day',
+  luxury:      'stays $200–500+/night (5-star hotels, luxury resorts), meals $50–120/person, total ~$260+/day',
+};
+
 export async function getFullItinerary(destinationName, budget, days, planStyle = null) {
   const numPlaces = Math.max(3, Math.min(days, 7));
   const budgetLabel = budget === 'budget' ? 'budget-friendly' : budget === 'luxury' ? 'luxury' : 'mid-range';
+  const priceGuide = BUDGET_PRICE_GUIDE[budget] || BUDGET_PRICE_GUIDE['mid-range'];
 
   const styleGuide = planStyle
     ? `Travel style: "${planStyle}". Tailor ALL place selections, restaurants, and stays to match this style:
@@ -134,6 +142,7 @@ export async function getFullItinerary(destinationName, budget, days, planStyle 
   const plan2Title = planStyle ? `${planStyle} — Alternative` : 'Hidden Gems';
 
   const prompt = `You are an expert travel guide. Generate a detailed ${days}-day travel itinerary for "${destinationName}" suited for ${budgetLabel} travellers.
+Budget constraints (MUST follow): ${priceGuide}
 ${styleGuide}
 ${regionGuide}
 
@@ -172,6 +181,7 @@ Rules:
 - Plan 1 "${plan1Title}": exactly ${numPlaces} places, dayIndex 1 to ${numPlaces}${planStyle ? `, each place must reflect the "${planStyle}" theme and cover a different part of "${destinationName}"` : ''}
 - Plan 2 "${plan2Title}": exactly ${numPlaces} DIFFERENT places, dayIndex 1 to ${numPlaces}
 - Each place must have exactly 2 restaurants and 2 stays matching "${budget}" price level
+- priceRange in stays MUST match the budget: ${priceGuide}
 - All coordinates must be real decimal numbers for the specific location`;
 
   const text = await callGemini(prompt);
