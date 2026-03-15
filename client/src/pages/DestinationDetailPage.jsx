@@ -6,6 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import { getDestinationDetail, clearDetail } from '../store/slices/destinationSlice';
 import WishlistButton from '../components/WishlistButton';
 import ShareButton from '../components/ShareButton';
+import TripCostSummary from '../components/TripCostSummary';
 
 // ── Category config ────────────────────────────────────────────────────────────
 const CATEGORY_COLORS = {
@@ -525,6 +526,9 @@ export default function DestinationDetailPage() {
             <p className="text-gray-400 text-sm">No itinerary available for this destination.</p>
           </div>
         )}
+
+        {/* Trip cost summary — always at the bottom */}
+        <TripCostSummary budget="mid-range" days={places.length || 5} country={detail.country} />
       </div>
     </div>
   );

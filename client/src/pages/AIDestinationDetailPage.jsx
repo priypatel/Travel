@@ -6,6 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import { getAIDestinationBySlug, clearAIDetail } from '../store/slices/aiSlice';
 import WishlistButton from '../components/WishlistButton';
 import ShareButton from '../components/ShareButton';
+import TripCostSummary from '../components/TripCostSummary';
 
 const CATEGORY_COLORS = {
   Nature:      { bg: 'bg-emerald-50', text: 'text-emerald-600', icon: '🌿' },
@@ -530,6 +531,9 @@ export default function AIDestinationDetailPage() {
             <p className="text-gray-400 text-sm">No itinerary available for this plan.</p>
           </div>
         )}
+
+        {/* Trip cost summary — always at the bottom */}
+        <TripCostSummary budget={budget} days={days} />
       </div>
     </div>
   );
