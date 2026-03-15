@@ -120,100 +120,187 @@ function PlaceCard({ place, dayNumber }) {
 }
 
 // ── Map helpers ────────────────────────────────────────────────────────────────
-function makeDotIcon(color, size = 14) {
+const POI_COLORS = {
+  restaurant: '#06B6D4',
+  stay:       '#7C3AED',
+};
+
+function makeDotIcon(color, size = 10) {
   return L.divIcon({
-    html: `<div style="width:${size}px;height:${size}px;background:${color};border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px ${color};"></div>`,
+    html: `<div style="width:${size}px;height:${size}px;background:${color};border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.25);"></div>`,
     className: '',
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   });
 }
 
-const POI_COLORS = {
-  place:       '#16A34A',
-  restaurant:  '#06B6D4',
-  stay:        '#7C3AED',
-  destination: '#4F46E5',
-};
-
-async function geocode(query) {
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
-      { headers: { 'Accept-Language': 'en' } }
-    );
-    const data = await res.json();
-    if (data.length > 0) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-  } catch { /* fall through */ }
-  return null;
+function makeNumberIcon(day) {
+  return L.divIcon({
+    html: `<div style="width:28px;height:28px;background:#4F46E5;border-radius:50%;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(79,70,229,0.4);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:800;font-family:system-ui;">${day}</div>`,
+    className: '',
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+  });
 }
 
 function scatter(lat, lng, index) {
   const angle = (index * 137.5 * Math.PI) / 180;
-  const radius = 0.01 + (index % 3) * 0.007;
+  const radius = 0.008 + (index % 3) * 0.006;
   return { lat: lat + Math.cos(angle) * radius, lng: lng + Math.sin(angle) * radius };
 }
 
 function DestinationMap({ lat, lng, name, places = [] }) {
   const containerRef = useRef(null);
-  const mapRef = useRef(null);
+  const mapRef      = useRef(null);
+  const layersRef   = useRef(null);
+  const [selectedDay, setSelectedDay] = useState(null); // null = All Days
 
+  // Init map once
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
+    if (!containerRef.current) return;
+    if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
 
-    mapRef.current = L.map(containerRef.current).setView([lat, lng], 13);
+    mapRef.current = L.map(containerRef.current).setView([lat, lng], 10);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(mapRef.current);
+    layersRef.current = L.layerGroup().addTo(mapRef.current);
 
-    L.marker([lat, lng], { icon: makeDotIcon(POI_COLORS.destination, 18) })
-      .addTo(mapRef.current)
-      .bindPopup(`<b>${name}</b>`)
-      .openPopup();
+    return () => { mapRef.current?.remove(); mapRef.current = null; };
+  }, [lat, lng]);
 
-    let cancelled = false;
-    (async () => {
-      for (let i = 0; i < places.length; i++) {
-        const place = places[i];
-        if (cancelled || !mapRef.current) break;
+  // Re-render markers whenever selectedDay or places change
+  useEffect(() => {
+    if (!mapRef.current || !layersRef.current) return;
+    layersRef.current.clearLayers();
 
-        let coords = null;
-        // Use embedded coords if valid
-        if (place.coordinates?.lat && place.coordinates?.lng) {
-          coords = { lat: place.coordinates.lat, lng: place.coordinates.lng };
-        } else {
-          await new Promise(r => setTimeout(r, 120));
-          coords = await geocode(`${place.name}, ${name}`) ?? scatter(lat, lng, i);
-        }
+    const valid = places.filter(p => p.coordinates?.lat && p.coordinates?.lng);
+    if (valid.length === 0) return;
 
-        if (!cancelled && mapRef.current) {
-          L.marker([coords.lat, coords.lng], { icon: makeDotIcon(POI_COLORS.place) })
-            .addTo(mapRef.current)
-            .bindPopup(`<b>${place.name}</b><br/><span style="color:#6B7280;font-size:11px">Day ${place.dayIndex ?? i + 1}</span>`);
-        }
+    if (selectedDay === null) {
+      // ALL DAYS — numbered markers + dashed route polyline
+      const latLngs = valid.map(p => [p.coordinates.lat, p.coordinates.lng]);
+
+      if (latLngs.length > 1) {
+        L.polyline(latLngs, { color: '#4F46E5', weight: 2.5, opacity: 0.5, dashArray: '8 5' })
+          .addTo(layersRef.current);
       }
-    })();
 
-    return () => {
-      cancelled = true;
-      mapRef.current?.remove();
-      mapRef.current = null;
-    };
-  }, [lat, lng, name]);
+      valid.forEach((place, i) => {
+        const day = place.dayIndex ?? i + 1;
+        L.marker([place.coordinates.lat, place.coordinates.lng], { icon: makeNumberIcon(day) })
+          .addTo(layersRef.current)
+          .bindPopup(
+            `<div style="font-family:system-ui;min-width:130px">
+              <div style="font-size:10px;color:#4F46E5;font-weight:700;margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em">Day ${day}</div>
+              <div style="font-weight:700;font-size:13px;color:#0F172A">${place.name}</div>
+              <div style="font-size:11px;color:#6B7280;margin-top:1px">${place.category}</div>
+            </div>`
+          );
+      });
+
+      if (latLngs.length > 1) {
+        mapRef.current.fitBounds(latLngs, { padding: [44, 44], maxZoom: 13 });
+      } else {
+        mapRef.current.setView(latLngs[0], 12);
+      }
+    } else {
+      // SINGLE DAY — numbered marker + restaurant/stay sub-markers
+      const place = valid.find(p => (p.dayIndex ?? valid.indexOf(p) + 1) === selectedDay);
+      if (!place) return;
+
+      const { lat: pLat, lng: pLng } = place.coordinates;
+
+      L.marker([pLat, pLng], { icon: makeNumberIcon(selectedDay) })
+        .addTo(layersRef.current)
+        .bindPopup(
+          `<div style="font-family:system-ui;min-width:150px">
+            <div style="font-size:10px;color:#4F46E5;font-weight:700;margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em">Day ${selectedDay}</div>
+            <div style="font-weight:700;font-size:13px;color:#0F172A">${place.name}</div>
+            <div style="font-size:11px;color:#6B7280;margin-top:1px">${place.category}</div>
+          </div>`
+        )
+        .openPopup();
+
+      place.restaurants?.forEach((r, i) => {
+        const pos = scatter(pLat, pLng, i * 2);
+        L.marker([pos.lat, pos.lng], { icon: makeDotIcon(POI_COLORS.restaurant) })
+          .addTo(layersRef.current)
+          .bindPopup(
+            `<div style="font-family:system-ui"><div style="font-weight:600;font-size:12px;color:#0F172A">🍽 ${r.name}</div><div style="font-size:11px;color:#6B7280">${r.cuisine}</div></div>`
+          );
+      });
+
+      place.stays?.forEach((s, i) => {
+        const pos = scatter(pLat, pLng, i * 2 + 1 + (place.restaurants?.length || 0));
+        L.marker([pos.lat, pos.lng], { icon: makeDotIcon(POI_COLORS.stay) })
+          .addTo(layersRef.current)
+          .bindPopup(
+            `<div style="font-family:system-ui"><div style="font-weight:600;font-size:12px;color:#0F172A">🏨 ${s.name}</div><div style="font-size:11px;color:#6B7280">${s.priceRange} · ${s.type}</div></div>`
+          );
+      });
+
+      mapRef.current.setView([pLat, pLng], 13);
+    }
+  }, [selectedDay, places]);
 
   return (
     <div>
-      <div ref={containerRef} className="w-full h-72 rounded-2xl overflow-hidden" />
+      {/* Day filter bar */}
+      <div className="flex flex-wrap gap-2 mb-3">
+        <button
+          onClick={() => setSelectedDay(null)}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            selectedDay === null
+              ? 'bg-[#4F46E5] text-white shadow-sm'
+              : 'bg-gray-100 text-gray-500 hover:bg-indigo-50 hover:text-indigo-600'
+          }`}
+        >
+          All Days
+        </button>
+        {places.map((p, i) => {
+          const day = p.dayIndex ?? i + 1;
+          return (
+            <button
+              key={day}
+              onClick={() => setSelectedDay(day)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                selectedDay === day
+                  ? 'bg-[#4F46E5] text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-500 hover:bg-indigo-50 hover:text-indigo-600'
+              }`}
+            >
+              Day {day}
+            </button>
+          );
+        })}
+      </div>
+
+      <div ref={containerRef} className="w-full h-80 rounded-2xl overflow-hidden" />
+
+      {/* Legend */}
       <div className="flex flex-wrap gap-4 mt-3 px-1 text-xs text-gray-500">
-        {[
-          { color: POI_COLORS.destination, label: 'Destination' },
-          { color: POI_COLORS.place,       label: 'Day Places' },
-        ].map(({ color, label }) => (
-          <span key={label} className="flex items-center gap-1.5">
-            <span style={{ background: color }} className="w-2.5 h-2.5 rounded-full inline-block" />
-            {label}
+        <span className="flex items-center gap-1.5">
+          <span className="w-5 h-5 rounded-full bg-[#4F46E5] flex items-center justify-center text-white text-[9px] font-bold shrink-0">1</span>
+          Day Stop
+        </span>
+        {selectedDay !== null ? (
+          <>
+            <span className="flex items-center gap-1.5">
+              <span style={{ background: POI_COLORS.restaurant }} className="w-2.5 h-2.5 rounded-full inline-block shrink-0" />
+              Restaurants
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span style={{ background: POI_COLORS.stay }} className="w-2.5 h-2.5 rounded-full inline-block shrink-0" />
+              Stays
+            </span>
+          </>
+        ) : (
+          <span className="flex items-center gap-1.5">
+            <svg width="20" height="6" className="shrink-0"><line x1="0" y1="3" x2="20" y2="3" stroke="#4F46E5" strokeWidth="2" strokeDasharray="5 3" opacity=".6"/></svg>
+            Route
           </span>
-        ))}
+        )}
       </div>
     </div>
   );
@@ -330,6 +417,7 @@ export default function AIDestinationDetailPage() {
         {destination?.coordinates?.lat && destination?.coordinates?.lng && activePlan && (
           <div className="bg-white rounded-2xl shadow-sm mb-8 p-4">
             <DestinationMap
+              key={activeTab}
               lat={destination.coordinates.lat}
               lng={destination.coordinates.lng}
               name={destination.name}
