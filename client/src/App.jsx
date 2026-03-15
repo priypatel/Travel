@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { getMe } from './store/slices/authSlice';
 import { fetchWishlist, clearWishlist } from './store/slices/wishlistSlice';
 import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
 import HomePage from './pages/HomePage';
 import DestinationDetailPage from './pages/DestinationDetailPage';
@@ -12,10 +13,19 @@ import RegisterPage from './pages/RegisterPage';
 import AISearchPage from './pages/AISearchPage';
 import AIDestinationDetailPage from './pages/AIDestinationDetailPage';
 import WishlistPage from './pages/WishlistPage';
+import ProfilePage from './pages/ProfilePage';
+import AdminPage from './pages/AdminPage';
 
 function ProtectedRoute({ children }) {
   const { user } = useSelector((state) => state.auth);
   return user ? children : <Navigate to="/login" replace />;
+}
+
+function AdminRoute({ children }) {
+  const { user } = useSelector((state) => state.auth);
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== 'admin') return <Navigate to="/" replace />;
+  return children;
 }
 
 function App() {
@@ -47,9 +57,12 @@ function App() {
           <Route path="/ai-search"         element={<AISearchPage />} />
           <Route path="/ai-destination"    element={<AIDestinationDetailPage />} />
           <Route path="/wishlist"          element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
+          <Route path="/profile"           element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+          <Route path="/admin"             element={<AdminRoute><AdminPage /></AdminRoute>} />
           <Route path="*"                  element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      <Footer />
     </>
   );
 }

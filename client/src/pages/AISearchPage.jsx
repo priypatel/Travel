@@ -4,12 +4,25 @@ import { useFormik } from 'formik';
 import * as yup from 'yup';
 import { useNavigate } from 'react-router-dom';
 import { getAIRecommendation, clearAIResult } from '../store/slices/aiSlice';
+import WishlistButton from '../components/WishlistButton';
 
-const BUDGET_OPTIONS = [
-  { value: 'budget',    label: 'Budget / Backpacker' },
-  { value: 'mid-range', label: 'Mid-Range' },
-  { value: 'luxury',    label: 'Luxury' },
+// Per-day rates MUST match BUDGET_PRICE_GUIDE in server/src/services/gemini.service.js
+// budget: $30–65/day | mid-range: $90–160/day | luxury: $260+/day
+const BUDGET_BASE = [
+  { value: 'budget',    name: 'Budget',    minPerDay: 30,  maxPerDay: 65  },
+  { value: 'mid-range', name: 'Mid-Range', minPerDay: 90,  maxPerDay: 160 },
+  { value: 'luxury',    name: 'Luxury',    minPerDay: 260, maxPerDay: null },
 ];
+
+function getBudgetOptions(days) {
+  const d = Math.max(1, Number(days) || 1);
+  return BUDGET_BASE.map(({ value, name, minPerDay, maxPerDay }) => {
+    const min = minPerDay * d;
+    const max = maxPerDay ? maxPerDay * d : null;
+    const range = max ? `$${min}–$${max}` : `$${min}+`;
+    return { value, label: `${name} (${range} / ${d} day${d !== 1 ? 's' : ''})` };
+  });
+}
 
 const TRAVEL_STYLE_OPTIONS = [
   'Adventure', 'Relaxing', 'Culture', 'Family', 'Romantic', 'Solo',
@@ -45,11 +58,19 @@ const validationSchema = yup.object({
 
 function DestinationCard({ dest, index, budget, days, onExplore }) {
   const gradient = CARD_GRADIENTS[index % CARD_GRADIENTS.length];
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow flex flex-col">
-      {/* Hero gradient */}
-      <div className={`relative h-44 bg-gradient-to-br ${gradient} flex items-end`}>
-        <div className="absolute inset-0 bg-black/10" />
+      {/* Hero — real photo or gradient fallback */}
+      <div className={`relative h-44 overflow-hidden flex items-end${dest.heroImage ? '' : ` bg-gradient-to-br ${gradient}`}`}>
+        {dest.heroImage && (
+          <img
+            src={dest.heroImage}
+            alt={dest.destinationName}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        )}
+        <div className="absolute inset-0 bg-black/30" />
         {/* Tags */}
         <div className="relative z-10 flex flex-wrap gap-1.5 p-3">
           {dest.tags?.slice(0, 3).map((tag) => (
@@ -58,20 +79,41 @@ function DestinationCard({ dest, index, budget, days, onExplore }) {
             </span>
           ))}
         </div>
+        {dest._id && (
+          <WishlistButton destinationId={dest._id} className="absolute top-3 right-3" />
+        )}
       </div>
 
       {/* Body */}
       <div className="p-4 flex-1 flex flex-col">
-        <h3 className="text-lg font-bold text-[#0F172A] leading-tight">{dest.destinationName}</h3>
-        {dest.country && (
-          <div className="flex items-center gap-1 mt-0.5 mb-2">
-            <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <span className="text-sm text-gray-500">{dest.country}</span>
-          </div>
+        {dest.planStyle && (
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#4F46E5] bg-indigo-50 px-2.5 py-1 rounded-full mb-2 w-fit">
+            ✦ {dest.planStyle}
+          </span>
+        )}
+        {dest.planStyle ? (
+          /* Location mode: destination name + country on separate line */
+          <>
+            <h3 className="text-lg font-bold text-[#0F172A] leading-tight">{dest.destinationName}</h3>
+            {dest.country && (
+              <div className="flex items-center gap-1 mt-0.5 mb-2">
+                <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span className="text-sm text-gray-500">{dest.country}</span>
+              </div>
+            )}
+          </>
+        ) : (
+          /* Global mode: "Destination, Country" combined in bold so location is clear */
+          <h3 className="text-lg font-bold text-[#0F172A] leading-tight mb-2">
+            {dest.destinationName}
+            {dest.country && (
+              <span className="font-normal text-base text-gray-500">, {dest.country}</span>
+            )}
+          </h3>
         )}
         <p className="text-sm text-gray-500 leading-relaxed line-clamp-3 flex-1">{dest.reason}</p>
 
@@ -115,7 +157,7 @@ export default function AISearchPage() {
       setSubmittedLocation(values.location.trim());
       dispatch(getAIRecommendation({
         ...values,
-        location: values.location.trim() || 'anywhere',
+        location: values.location.trim(),
         days: Number(values.days),
       }));
     },
@@ -130,9 +172,14 @@ export default function AISearchPage() {
   };
 
   const handleExplore = (dest, budget, days) => {
-    navigate(
-      `/ai-destination?slug=${dest.slug}&budget=${budget}&days=${days}&name=${encodeURIComponent(dest.destinationName)}`
-    );
+    const params = new URLSearchParams({
+      slug: dest.slug,
+      budget,
+      days,
+      name: dest.destinationName,
+      ...(dest.planStyle ? { style: dest.planStyle } : {}),
+    });
+    navigate(`/ai-destination?${params}`);
   };
 
   return (
@@ -200,7 +247,7 @@ export default function AISearchPage() {
                     onChange={formik.handleChange}
                     className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl text-sm text-[#111827] bg-white focus:outline-none focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] appearance-none transition"
                   >
-                    {BUDGET_OPTIONS.map((o) => (
+                    {getBudgetOptions(formik.values.days).map((o) => (
                       <option key={o.value} value={o.value}>{o.label}</option>
                     ))}
                   </select>

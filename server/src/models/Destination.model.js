@@ -69,6 +69,10 @@ const destinationSchema = new mongoose.Schema(
       lng: { type: Number },
     },
     // AI-generated destination fields
+    planStyle: {
+      type: String,
+      default: '',
+    },
     slug: {
       type: String,
       trim: true,

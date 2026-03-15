@@ -9,3 +9,51 @@
 .overflow-x-auto::-webkit-scrollbar {
   display: none;
 }
+
+/* ── Print / Save as PDF ───────────────────────────────────────────── */
+@media print {
+  /* Hide chrome */
+  nav,
+  header,
+  .no-print,
+  [data-no-print] {
+    display: none !important;
+  }
+
+  /* Hide hero action buttons (wishlist, share) */
+  .hero-actions {
+    display: none !important;
+  }
+
+  /* Hide back link */
+  a[href="/"],
+  a[href="/wishlist"] {
+    display: none !important;
+  }
+
+  /* Remove shadows / rounded corners for cleaner PDF */
+  .shadow-sm,
+  .shadow-md,
+  .shadow-2xl,
+  .rounded-2xl {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  /* Ensure full-width content */
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hero: keep the image but reduce height */
+  section.relative.h-\[60vh\] {
+    height: 200px !important;
+  }
+
+  /* Map: hide on PDF (not useful in static PDF) */
+  .leaflet-container,
+  .leaflet-container ~ * {
+    display: none !important;
+  }
+}

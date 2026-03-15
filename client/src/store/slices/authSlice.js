@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { registerUser, loginUser, logoutUser, getMeUser } from '../../api/authApi';
+import { registerUser, loginUser, logoutUser, getMeUser, updateMeUser } from '../../api/authApi';
 
 // --- Thunks ---
 
@@ -32,6 +32,17 @@ export const logout = createAsyncThunk(
       return await logoutUser(); // server clears cookie
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Logout failed');
+    }
+  }
+);
+
+export const updateProfile = createAsyncThunk(
+  'auth/updateProfile',
+  async (formData, { rejectWithValue }) => {
+    try {
+      return await updateMeUser(formData);
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Update failed');
     }
   }
 );
@@ -79,6 +90,12 @@ const authSlice = createSlice({
     builder
       .addCase(logout.fulfilled, (state) => { state.user = null; })
       .addCase(logout.rejected, (state) => { state.user = null; }); // clear locally even if server fails
+
+    // updateProfile
+    builder
+      .addCase(updateProfile.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(updateProfile.fulfilled, (state, action) => { state.loading = false; state.user = action.payload.user; })
+      .addCase(updateProfile.rejected, (state, action) => { state.loading = false; state.error = action.payload; });
 
     // getMe — silent session restore on page load
     builder

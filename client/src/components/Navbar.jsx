@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../store/slices/authSlice';
+import Logo from './Logo';
 
 const LINKS = [
   { to: '/', label: 'Destinations' },
@@ -12,6 +13,8 @@ export default function Navbar() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
+  const { pathname } = useLocation();
+  const isAuthPage = pathname === '/login' || pathname === '/register';
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -37,16 +40,11 @@ export default function Navbar() {
     }`;
 
   return (
-    <nav className={`${navBase} ${scrolled ? navScrolled : navTransparent}`}>
+    <nav className={`no-print ${navBase} ${scrolled ? navScrolled : navTransparent}`}>
       <div className="max-w-[1200px] mx-auto px-6 w-full flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 font-bold text-xl text-indigo-600">
-          <span className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
-            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" />
-            </svg>
-          </span>
+          <Logo className="w-8 h-8" />
           TravelAI
         </Link>
 
@@ -62,13 +60,23 @@ export default function Navbar() {
               Wishlist
             </NavLink>
           )}
+          {user?.role === 'admin' && (
+            <NavLink to="/admin" className={linkClass}>
+              Admin
+            </NavLink>
+          )}
         </div>
 
         {/* Desktop auth buttons */}
         <div className="hidden md:flex items-center gap-3">
           {user ? (
             <>
-              <span className="text-sm text-[#0F172A] font-medium">{user.name}</span>
+              <Link to="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                <div className="w-8 h-8 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center">
+                  {user.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
+                </div>
+                <span className="text-sm text-[#0F172A] font-medium">{user.name}</span>
+              </Link>
               <button
                 onClick={handleLogout}
                 className="text-sm font-medium px-4 py-2 rounded-lg border border-gray-200 text-[#0F172A] hover:bg-gray-50 transition-colors"
@@ -76,11 +84,11 @@ export default function Navbar() {
                 Sign out
               </button>
             </>
-          ) : (
+          ) : !isAuthPage ? (
             <>
               <Link
                 to="/login"
-                className="text-sm font-medium text-[#0F172A] hover:text-indigo-600 transition-colors"
+                className="text-sm font-semibold px-4 py-2 rounded-lg border border-indigo-600 text-indigo-600 hover:bg-indigo-50 transition-colors"
               >
                 Login
               </Link>
@@ -91,7 +99,7 @@ export default function Navbar() {
                 Sign up
               </Link>
             </>
-          )}
+          ) : null}
         </div>
 
         {/* Mobile hamburger */}
@@ -123,14 +131,25 @@ export default function Navbar() {
               Wishlist
             </NavLink>
           )}
+          {user?.role === 'admin' && (
+            <NavLink to="/admin" className={linkClass} onClick={() => setMenuOpen(false)}>
+              Admin
+            </NavLink>
+          )}
           <hr className="border-gray-100" />
           {user ? (
-            <button onClick={handleLogout} className="text-sm font-medium text-left text-red-500">
-              Sign out ({user.name})
-            </button>
-          ) : (
+            <>
+              <Link to="/profile" className="text-sm font-medium text-[#0F172A]" onClick={() => setMenuOpen(false)}>
+                Profile ({user.name})
+              </Link>
+              <button onClick={handleLogout} className="text-sm font-medium text-left text-red-500">
+                Sign out
+              </button>
+            </>
+
+          ) : !isAuthPage ? (
             <div className="flex gap-3">
-              <Link to="/login" className="text-sm font-medium text-[#0F172A]" onClick={() => setMenuOpen(false)}>
+              <Link to="/login" className="text-sm font-semibold px-4 py-2 rounded-lg border border-indigo-600 text-indigo-600 hover:bg-indigo-50 transition-colors" onClick={() => setMenuOpen(false)}>
                 Login
               </Link>
               <Link
@@ -141,7 +160,7 @@ export default function Navbar() {
                 Sign up
               </Link>
             </div>
-          )}
+          ) : null}
         </div>
       )}
     </nav>

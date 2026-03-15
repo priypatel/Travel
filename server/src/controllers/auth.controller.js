@@ -92,3 +92,23 @@ export const logout = asyncHandler(async (_req, res) => {
 export const getMe = asyncHandler(async (req, res) => {
   res.status(200).json({ user: req.user });
 });
+
+// PUT /api/auth/me — update name and/or password
+export const updateMe = asyncHandler(async (req, res) => {
+  const { name, currentPassword, newPassword } = req.body;
+
+  const user = await User.findById(req.user._id);
+  if (!user) throw new AppError('User not found', 404);
+
+  if (name) user.name = name.trim();
+
+  if (newPassword) {
+    if (!currentPassword) throw new AppError('Current password is required', 400);
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) throw new AppError('Current password is incorrect', 401);
+    user.password = await bcrypt.hash(newPassword, 12);
+  }
+
+  await user.save();
+  res.status(200).json({ user: userPayload(user) });
+});

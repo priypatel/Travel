@@ -38,7 +38,7 @@ export default function WishlistButton({ destinationId, className = '', size = '
     <button
       onClick={handleClick}
       title={isSaved ? 'Remove from wishlist' : 'Save to wishlist'}
-      className={`${btnSize} bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow transition-all ${className}`}
+      className={`${btnSize} bg-white shadow-md hover:bg-gray-50 rounded-full flex items-center justify-center transition-colors ${className}`}
     >
       <svg
         className={`${iconSize} transition-colors ${isSaved ? 'text-red-500' : 'text-gray-400 hover:text-red-400'}`}

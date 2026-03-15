@@ -19,9 +19,9 @@ export const getAIRecommendation = createAsyncThunk(
 // GET /ai/destination/:slug → { destination, plans, source }
 export const getAIDestinationBySlug = createAsyncThunk(
   'ai/destinationBySlug',
-  async ({ slug, budget, days, name }, { rejectWithValue }) => {
+  async ({ slug, budget, days, name, style }, { rejectWithValue }) => {
     try {
-      const res = await fetchAIDestinationBySlug(slug, { budget, days, name });
+      const res = await fetchAIDestinationBySlug(slug, { budget, days, name, ...(style ? { style } : {}) });
       return res.data;
     } catch (err) {
       return rejectWithValue(
