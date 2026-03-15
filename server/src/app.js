@@ -15,7 +15,7 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
   process.env.CLIENT_URL,
-].filter(Boolean);
+].filter(Boolean).map(o => o.replace(/\/$/, ''));
 
 app.use(cors({
   origin: (origin, callback) => {
