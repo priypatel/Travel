@@ -37,7 +37,7 @@ export default function Navbar() {
     }`;
 
   return (
-    <nav className={`${navBase} ${scrolled ? navScrolled : navTransparent}`}>
+    <nav className={`no-print ${navBase} ${scrolled ? navScrolled : navTransparent}`}>
       <div className="max-w-[1200px] mx-auto px-6 w-full flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 font-bold text-xl text-indigo-600">
