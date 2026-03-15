@@ -20,11 +20,6 @@ const CATEGORY_COLORS = {
   Monument:    { bg: 'bg-slate-50',   text: 'text-slate-600',   icon: '🗽' },
 };
 
-const PRICE_BADGE = {
-  budget:     { label: '$',   cls: 'bg-green-100 text-green-700' },
-  'mid-range':{ label: '$$',  cls: 'bg-yellow-100 text-yellow-700' },
-  luxury:     { label: '$$$', cls: 'bg-purple-100 text-purple-700' },
-};
 
 function StarRating({ rating }) {
   const stars = Math.round(rating || 0);
@@ -42,14 +37,12 @@ function StarRating({ rating }) {
 }
 
 function RestaurantMini({ r }) {
-  const price = PRICE_BADGE[r.priceLevel] || PRICE_BADGE['mid-range'];
   return (
     <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-2">
       <span className="text-base shrink-0">🍽</span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-1">
           <p className="text-xs font-semibold text-[#0F172A] truncate">{r.name}</p>
-          <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${price.cls} shrink-0`}>{price.label}</span>
         </div>
         <p className="text-xs text-gray-400">{r.cuisine}</p>
       </div>
@@ -58,14 +51,12 @@ function RestaurantMini({ r }) {
 }
 
 function StayMini({ s }) {
-  const price = PRICE_BADGE[s.priceLevel] || PRICE_BADGE['mid-range'];
   return (
     <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-2">
       <span className="text-base shrink-0">🏨</span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-1">
           <p className="text-xs font-semibold text-[#0F172A] truncate">{s.name}</p>
-          <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${price.cls} shrink-0`}>{price.label}</span>
         </div>
         <p className="text-xs text-gray-400">{s.priceRange} · {s.type}</p>
       </div>

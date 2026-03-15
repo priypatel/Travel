@@ -24,14 +24,6 @@ const CATEGORY_COLORS = {
   Palace:    { bg: 'bg-pink-50',    text: 'text-pink-600',    icon: '🏯' },
 };
 
-const PRICE_BADGE = {
-  '$':         { label: '$',   cls: 'bg-green-100 text-green-700' },
-  '$$':        { label: '$$',  cls: 'bg-yellow-100 text-yellow-700' },
-  '$$$':       { label: '$$$', cls: 'bg-purple-100 text-purple-700' },
-  budget:      { label: '$',   cls: 'bg-green-100 text-green-700' },
-  'mid-range': { label: '$$',  cls: 'bg-yellow-100 text-yellow-700' },
-  luxury:      { label: '$$$', cls: 'bg-purple-100 text-purple-700' },
-};
 
 // ── Distribute items across buckets (3 per bucket, wrap-around) ───────────────
 function distribute(items, numBuckets, perBucket = 3) {
@@ -52,14 +44,12 @@ function distribute(items, numBuckets, perBucket = 3) {
 
 // ── Mini cards ─────────────────────────────────────────────────────────────────
 function RestaurantMini({ r }) {
-  const price = PRICE_BADGE[r.priceLevel] || PRICE_BADGE['$$'];
   return (
     <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-2.5">
       <span className="text-base shrink-0">🍽</span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-1">
           <p className="text-xs font-semibold text-[#0F172A] truncate">{r.name}</p>
-          <span className={`text-xs font-bold px-1.5 py-0.5 rounded shrink-0 ${price.cls}`}>{price.label}</span>
         </div>
         <p className="text-xs text-gray-400">{r.cuisine}</p>
         {r.rating > 0 && (
@@ -79,14 +69,12 @@ function RestaurantMini({ r }) {
 }
 
 function StayMini({ s }) {
-  const price = PRICE_BADGE[s.priceLevel] || PRICE_BADGE['$$'];
   return (
     <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-2.5">
       <span className="text-base shrink-0">🏨</span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-1">
           <p className="text-xs font-semibold text-[#0F172A] truncate">{s.name}</p>
-          <span className={`text-xs font-bold px-1.5 py-0.5 rounded shrink-0 ${price.cls}`}>{price.label}</span>
         </div>
         <p className="text-xs text-gray-400">
           {[s.priceRange, s.type].filter(Boolean).join(' · ')}

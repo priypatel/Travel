@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { getMe } from './store/slices/authSlice';
 import { fetchWishlist, clearWishlist } from './store/slices/wishlistSlice';
 import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
 import HomePage from './pages/HomePage';
 import DestinationDetailPage from './pages/DestinationDetailPage';
@@ -50,6 +51,7 @@ function App() {
           <Route path="*"                  element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      <Footer />
     </>
   );
 }
