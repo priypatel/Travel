@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { getDestinations } from '../store/slices/destinationSlice';
 import DestinationSlider from '../components/DestinationSlider';
@@ -118,8 +119,8 @@ export default function HomePage() {
           <p className="text-lg text-white/80 mb-8">
             AI-powered travel recommendations tailored just for you. Explore destinations, find hidden gems, and plan your perfect trip.
           </p>
-          <a
-            href="/ai-search"
+          <Link
+            to="/ai-search"
             className="inline-flex items-center gap-2 bg-[#4F46E5] hover:bg-indigo-700 text-white font-semibold px-8 py-3.5 rounded-xl transition-colors text-base shadow-lg shadow-indigo-500/25"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -127,7 +128,7 @@ export default function HomePage() {
                 d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
             </svg>
             Plan with AI
-          </a>
+          </Link>
         </div>
       </section>
 
