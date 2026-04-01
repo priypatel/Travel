@@ -8,14 +8,14 @@ const IS_PROD = process.env.NODE_ENV === 'production';
 
 const ACCESS_COOKIE_OPTIONS = {
   httpOnly: true,
-  sameSite: 'strict',
+  sameSite: IS_PROD ? 'none' : 'strict',
   maxAge: 15 * 60 * 1000,           // 15 minutes
   secure: IS_PROD,
 };
 
 const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
-  sameSite: 'strict',
+  sameSite: IS_PROD ? 'none' : 'strict',
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   secure: IS_PROD,
 };
